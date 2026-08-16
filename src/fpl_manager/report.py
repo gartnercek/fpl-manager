@@ -63,18 +63,18 @@ HTML_TEMPLATE = Template(
 <ul>{% for line in actions %}<li>{{ line }}</li>{% endfor %}</ul>
 <h3>Starting XI</h3>
 <table border="1" cellpadding="4" cellspacing="0">
-<tr><th></th><th>Player</th><th>xP</th><th>sd</th><th>Price</th></tr>
+<tr><th></th><th>Player</th><th>xP</th><th>5GW</th><th>sd</th><th>Price</th></tr>
 {% for p in xi %}
-<tr><td>{{ p.pos }}{{ p.flag }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
+<tr><td>{{ p.pos }}{{ p.flag }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.1f'|format(p.mu5) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
 {% endfor %}
 </table>
 <p>XI xP with captain: {{ '%.2f'|format(plan.xi_mu) }} ± {{ '%.2f'|format(plan.xi_sd) }}</p>
 <h3>Bench (auto-sub order)</h3>
 <p>Put them in this order on the FPL bench. Slot 1 is usually the backup GK; slots 2-4 are outfield auto-sub priority.</p>
 <table border="1" cellpadding="4" cellspacing="0">
-<tr><th>Slot</th><th></th><th>Player</th><th>xP</th><th>sd</th><th>Price</th></tr>
+<tr><th>Slot</th><th></th><th>Player</th><th>xP</th><th>5GW</th><th>sd</th><th>Price</th></tr>
 {% for p in bench %}
-<tr><td>{{ p.slot }}</td><td>{{ p.pos }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
+<tr><td>{{ p.slot }}</td><td>{{ p.pos }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.1f'|format(p.mu5) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
 {% endfor %}
 </table>
 <h3>Chips</h3>
@@ -116,6 +116,8 @@ def render_report(
         chips.triple_captain.reason.split(":")[0],
         chips.bench_boost.reason.split(":")[0],
     ]
+    if plan.notes:
+        actions.insert(1, plan.notes[0])
     if plan.in_ids:
         actions.insert(0, f"Transfers ({plan.transfers}, hit -{plan.hit_cost}): {plan.out_ids} -> {plan.in_ids}")
     else:
@@ -134,9 +136,12 @@ def render_report(
                 "mu": p.mu,
                 "sd": p.sd,
                 "price": p.now_cost / 10,
+                "mu5": p.mu_horizon.get(5, p.mu),
             }
         )
-        xi_rows.append(f"  {POS[p.position]}{flag:4} {p.web_name:<16} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m")
+        xi_rows.append(
+            f"  {POS[p.position]}{flag:4} {p.web_name:<16} {p.mu:5.2f}  5GW {p.mu_horizon.get(5, p.mu):5.1f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
+        )
 
     bench = []
     bench_rows = []
@@ -150,6 +155,7 @@ def render_report(
                 "mu": p.mu,
                 "sd": p.sd,
                 "price": p.now_cost / 10,
+                "mu5": p.mu_horizon.get(5, p.mu),
             }
         )
         bench_rows.append(
@@ -172,7 +178,7 @@ def render_report(
 
     appendix = []
     for pos in (1, 2, 3, 4):
-        group = [p for p in preds if p.position == pos][:8]
+        group = sorted([p for p in preds if p.position == pos], key=lambda p: p.mu, reverse=True)[:8]
         appendix.append(POS[pos] + ": " + ", ".join(f"{p.web_name} {p.mu:.1f}" for p in group))
 
     ctx = {

@@ -86,3 +86,18 @@ def test_transfer_count_is_exact():
     assert len(plan.in_ids) == 1
     assert len(plan.out_ids) == 1
     assert 25 in plan.in_ids
+
+
+def test_five_week_objective_keeps_steady_forward():
+    pool = _pool()
+    for p in pool:
+        if p.id == 30:
+            p.mu = 12.0
+            p.mu_by_gw = {1: 12.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0}
+        if p.id == 31:
+            p.mu = 6.2
+            p.mu_by_gw = {w: 6.2 for w in range(1, 6)}
+    plan = solve_squad(pool, lambda_var=0.0, weeks=[1, 2, 3, 4, 5])
+    assert plan is not None
+    assert 31 in plan.owned
+    assert plan.captain == 30

@@ -71,10 +71,9 @@ email immediately. The daily 09:00 UTC cron only emails when a deadline is withi
 
 ## Known approximations
 
-- Sell prices approximated from public transfer history (no auth)
-- Component independence in variance; bonus-points model is crude (`0.3 × E[goals+assists]`)
-- Team strength from FPL's own ratings, not xG models (upgrade path: understat/FBref later)
-- Free-transfer future value as a constant in v1
-- DGW priors are hand-set constants until fixtures confirm
-- Before GW1, minutes/xG come from last-season totals on `bootstrap-static` (match history is empty)
-- MIP uses linear variance penalty `E[points] - λ_var · Var[points]` (`lambda_var` in config)
+- Squad MIP maximises **5-week** XI+captain xP (captain and XI re-picked each GW). GW1 xP is displayed separately.
+- Minutes: last-6 matches when they exist; otherwise last-season totals mixed with price and ownership. Summer signings are not treated as nailed.
+- Form: last-6 xG vs season rate when history exists; otherwise FPL `form` (zero before GW1). GW1 also blends FPL `ep_next`.
+- Points are Monte Carlo (minutes, Poisson returns, and clean sheets share the same draws). Bonus is still `0.3 × (G+A)` inside each draw.
+- Team strength from FPL's own ratings, not xG models. Sell prices from public transfer history.
+- Free-transfer future value is a constant. DGW chip priors are constants until fixtures confirm.

@@ -68,7 +68,10 @@ def _priors():
 
 
 def _cfg():
-    return load_config()
+    cfg = load_config()
+    cfg["simulate_draws"] = 400
+    cfg["ep_next_blend"] = 0.0
+    return cfg
 
 
 def _predict(player, matchups):
@@ -122,7 +125,7 @@ def test_double_gameweek_roughly_doubles_mu():
     fx = Matchup(event=1, opponent=2, is_home=True, difficulty=2, kickoff=None)
     sgw = _predict(_player(), [fx])
     dgw = _predict(_player(id=3, web_name="DGW"), [fx, fx])
-    assert dgw.mu == pytest.approx(2 * sgw.mu, rel=0.02)
+    assert dgw.mu == pytest.approx(2 * sgw.mu, rel=0.08)
 
 
 def test_estimate_minutes_ewma_prefers_recent():
@@ -132,6 +135,20 @@ def test_estimate_minutes_ewma_prefers_recent():
     est = estimate_minutes(player, history, cfg)
     assert est.p_ge60 > 0.2
     assert est.p_play <= 1.0
+
+
+def test_summer_signing_has_lower_start_probability_than_stayer():
+    cfg = _cfg()
+    stayer = _player(team_join_date="2024-07-01", selected_by_percent="6.0")
+    mover = _player(
+        id=2,
+        web_name="Mover",
+        team_join_date="2026-07-20",
+        selected_by_percent="6.0",
+    )
+    a = estimate_minutes(stayer, None, cfg)
+    b = estimate_minutes(mover, None, cfg)
+    assert b.p_start < a.p_start - 0.08
 
 
 def test_team_xgc_from_goalkeepers():

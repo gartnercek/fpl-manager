@@ -2,15 +2,27 @@
 # Leave 0 until you set it; M1 (xP table) does not need it.
 team_id: 0
 
-# Mean-variance: maximize E[points] - lambda_risk * SD[points] in reports.
-# The MIP uses the linear equivalent: E[points] - lambda_var * Var[points].
+# Squad is chosen on this many upcoming gameweeks (XI + captain re-picked each week).
+horizon_gws: 5
+horizon_discount: 1.0
+# Blend FPL's own ep_next into GW1 xP only (news/minutes they see, we don't).
+ep_next_blend: 0.35
+simulate_draws: 1200
+
 lambda_risk: 0.15
 lambda_var: 0.02
-
-horizon_gws: 6
 hit_margin: 1.0
 free_transfer_future_value: 1.5
 wildcard_gap_threshold: 12.0
+
+form:
+  points_slope: 0.08
+  recent_xg_weight: 0.45
+
+minutes:
+  summer_cutoff: "2026-06-01"
+  signing_last_season_weight: 0.40
+  market_full_ownership: 25.0
 
 # Chip stopping-rule priors (used until doubles are confirmed on the fixture list).
 chips:

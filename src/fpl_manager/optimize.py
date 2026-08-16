@@ -12,7 +12,7 @@ BUDGET_TENTHS = 1000
 SQUAD_COUNTS = {1: 2, 2: 5, 3: 5, 4: 3}
 MAX_PER_CLUB = 3
 BENCH_WEIGHT = 0.1
-SOLVER_TIME = 45
+SOLVER_TIME = 60
 
 
 @dataclass
@@ -27,6 +27,8 @@ class OptPlayer:
     sigma2: float
     mu_h3: float
     p_play: float
+    mu_by_gw: dict[int, float] = field(default_factory=dict)
+    sigma2_by_gw: dict[int, float] = field(default_factory=dict)
 
     @classmethod
     def from_pred(cls, pred: PlayerPrediction, sell_cost: int | None = None) -> OptPlayer:
@@ -41,7 +43,19 @@ class OptPlayer:
             sigma2=pred.sigma2,
             mu_h3=pred.mu_horizon.get(3, pred.mu),
             p_play=pred.minutes.p_play,
+            mu_by_gw=dict(pred.mu_by_gw),
+            sigma2_by_gw=dict(pred.sigma2_by_gw),
         )
+
+    def mu_at(self, week: int) -> float:
+        if self.mu_by_gw:
+            return float(self.mu_by_gw.get(week, 0.0))
+        return self.mu
+
+    def var_at(self, week: int) -> float:
+        if self.sigma2_by_gw:
+            return float(self.sigma2_by_gw.get(week, self.sigma2))
+        return self.sigma2
 
 
 @dataclass
@@ -83,30 +97,37 @@ def solve_squad(
     transfers: int | None = None,
     bank: int = 0,
     budget: int = BUDGET_TENTHS,
+    weeks: list[int] | None = None,
+    discount: float = 1.0,
 ) -> Plan | None:
-    """Solve a 15-man squad + XI + captain.
-
-    If current_ids is None, pick an initial squad under `budget`.
-    Otherwise require exactly `transfers` in/out and respect `bank` + sell prices.
-    """
+    """15-man squad. XI and captain are chosen independently each week in `weeks`."""
     ids = [p.id for p in players]
     by_id = {p.id: p for p in players}
-    own = pulp.LpVariable.dicts("own", ids, 0, 1, cat="Binary")
-    start = pulp.LpVariable.dicts("start", ids, 0, 1, cat="Binary")
-    cap = pulp.LpVariable.dicts("cap", ids, 0, 1, cat="Binary")
-    vice = pulp.LpVariable.dicts("vice", ids, 0, 1, cat="Binary")
+    if weeks:
+        week_ids = list(weeks)
+    else:
+        week_ids = sorted({w for p in players for w in p.mu_by_gw}) or [0]
+    w0 = week_ids[0]
+
+    own = {pid: pulp.LpVariable(f"own_{pid}", cat="Binary") for pid in ids}
+    start = {
+        pid: {w: pulp.LpVariable(f"st_{pid}_{w}", cat="Binary") for w in week_ids} for pid in ids
+    }
+    cap = {pid: {w: pulp.LpVariable(f"cap_{pid}_{w}", cat="Binary") for w in week_ids} for pid in ids}
+    vice = {pid: pulp.LpVariable(f"vice_{pid}", cat="Binary") for pid in ids}
     prob = pulp.LpProblem("fpl_squad", pulp.LpMaximize)
 
     for pid in ids:
-        p = by_id[pid]
-        prob += start[pid] <= own[pid]
-        prob += cap[pid] <= start[pid]
-        prob += vice[pid] <= start[pid]
-        prob += cap[pid] + vice[pid] <= 1
+        for w in week_ids:
+            prob += start[pid][w] <= own[pid]
+            prob += cap[pid][w] <= start[pid][w]
+        prob += vice[pid] <= start[pid][w0]
+        prob += cap[pid][w0] + vice[pid] <= 1
 
     prob += pulp.lpSum(own[pid] for pid in ids) == 15
-    prob += pulp.lpSum(start[pid] for pid in ids) == 11
-    prob += pulp.lpSum(cap[pid] for pid in ids) == 1
+    for w in week_ids:
+        prob += pulp.lpSum(start[pid][w] for pid in ids) == 11
+        prob += pulp.lpSum(cap[pid][w] for pid in ids) == 1
     prob += pulp.lpSum(vice[pid] for pid in ids) == 1
 
     for pos, n in SQUAD_COUNTS.items():
@@ -116,10 +137,11 @@ def solve_squad(
     defs = [p.id for p in players if p.position == 2]
     mids = [p.id for p in players if p.position == 3]
     fwds = [p.id for p in players if p.position == 4]
-    prob += pulp.lpSum(start[pid] for pid in gk) == 1
-    prob += pulp.lpSum(start[pid] for pid in defs) >= 3
-    prob += pulp.lpSum(start[pid] for pid in mids) >= 2
-    prob += pulp.lpSum(start[pid] for pid in fwds) >= 1
+    for w in week_ids:
+        prob += pulp.lpSum(start[pid][w] for pid in gk) == 1
+        prob += pulp.lpSum(start[pid][w] for pid in defs) >= 3
+        prob += pulp.lpSum(start[pid][w] for pid in mids) >= 2
+        prob += pulp.lpSum(start[pid][w] for pid in fwds) >= 1
 
     clubs = {p.team_id for p in players}
     for club in clubs:
@@ -144,27 +166,37 @@ def solve_squad(
         t_used = t
         hit = 0
 
-    bench_term = BENCH_WEIGHT * pulp.lpSum((own[pid] - start[pid]) * by_id[pid].mu for pid in ids)
-    mean_term = pulp.lpSum(start[pid] * by_id[pid].mu for pid in ids) + pulp.lpSum(
-        cap[pid] * by_id[pid].mu for pid in ids
-    )
-    var_term = pulp.lpSum(start[pid] * by_id[pid].sigma2 for pid in ids) + 3.0 * pulp.lpSum(
-        cap[pid] * by_id[pid].sigma2 for pid in ids
-    )
-    prob += mean_term + bench_term - lambda_var * var_term
+    mean_term = []
+    var_term = []
+    bench_term = []
+    for i, w in enumerate(week_ids):
+        wt = discount**i
+        for pid in ids:
+            p = by_id[pid]
+            mu = p.mu_at(w)
+            var = p.var_at(w)
+            mean_term.append(wt * start[pid][w] * mu)
+            mean_term.append(wt * cap[pid][w] * mu)
+            var_term.append(wt * start[pid][w] * var)
+            var_term.append(wt * 3.0 * cap[pid][w] * var)
+            bench_term.append(wt * BENCH_WEIGHT * (own[pid] - start[pid][w]) * mu)
+    prob += pulp.lpSum(mean_term) + pulp.lpSum(bench_term) - lambda_var * pulp.lpSum(var_term)
 
     status = prob.solve(_solver())
     if pulp.LpStatus[status] != "Optimal":
         return None
 
     owned = [pid for pid in ids if own[pid].value() > 0.5]
-    starters = [pid for pid in ids if start[pid].value() > 0.5]
-    captain = next(pid for pid in ids if cap[pid].value() > 0.5)
+    starters = [pid for pid in ids if start[pid][w0].value() > 0.5]
+    captain = next(pid for pid in ids if cap[pid][w0].value() > 0.5)
     vice = next(pid for pid in ids if vice[pid].value() > 0.5)
     bench = _order_bench(owned, starters, by_id)
-    xi_mu = sum(by_id[pid].mu for pid in starters) + by_id[captain].mu
-    xi_var = sum(by_id[pid].sigma2 for pid in starters) + 3.0 * by_id[captain].sigma2
-    h3 = sum(by_id[pid].mu_h3 for pid in starters) + by_id[captain].mu_h3
+    xi_mu = sum(by_id[pid].mu_at(w0) for pid in starters) + by_id[captain].mu_at(w0)
+    xi_var = sum(by_id[pid].var_at(w0) for pid in starters) + 3.0 * by_id[captain].var_at(w0)
+    first3 = week_ids[:3]
+    h3 = sum(
+        sum(by_id[pid].mu_at(w) for pid in starters) + by_id[captain].mu_at(w) for w in first3
+    )
     cost = sum(by_id[pid].now_cost for pid in owned)
     in_list: list[int] = []
     out_list: list[int] = []
@@ -212,12 +244,17 @@ def choose_plan(
     free_transfers: int,
     ft_future_value: float,
     hit_margin: float,
+    weeks: list[int] | None = None,
+    discount: float = 1.0,
 ) -> Plan:
     if current_ids is None:
-        plan = solve_squad(players, lambda_var=lambda_var)
+        plan = solve_squad(players, lambda_var=lambda_var, weeks=weeks, discount=discount)
         if plan is None:
             raise RuntimeError("Initial squad MIP was infeasible")
-        plan.notes.append("GW1-style initial squad: unlimited changes, 100.0m budget.")
+        n = len(weeks) if weeks else 1
+        plan.notes.append(
+            f"Squad chosen to maximize {n}-week XI+captain xP (captain/XI re-picked each GW)."
+        )
         return plan
 
     candidates: list[Plan] = []
@@ -228,15 +265,15 @@ def choose_plan(
             current_ids=current_ids,
             transfers=t,
             bank=bank,
+            weeks=weeks,
+            discount=discount,
         )
         if plan is None:
             continue
         hit = max(0, t - free_transfers) * 4
         plan.hit_cost = hit
         unused_ft = max(free_transfers - t, 0)
-        plan.objective = plan.xi_mu + BENCH_WEIGHT * sum(
-            next(p.mu for p in players if p.id == pid) for pid in plan.bench
-        ) - lambda_var * (plan.xi_sd**2) - hit + unused_ft * ft_future_value
+        plan.objective = plan.objective - hit + unused_ft * ft_future_value
         plan.notes.append(f"T={t} hit={hit} unused_ft_bonus={unused_ft * ft_future_value:.1f}")
         candidates.append(plan)
     if not candidates:
@@ -270,12 +307,13 @@ def prune_players(
     for pred in preds:
         if pred.minutes.p_play <= 0 and pred.player_id not in current_ids:
             continue
-        if pred.mu <= 0 and pred.player_id not in current_ids:
+        if pred.mu <= 0 and pred.mu_horizon.get(5, 0) <= 0 and pred.player_id not in current_ids:
             continue
         by_pos.setdefault(pred.position, []).append(pred)
     for pos, group in by_pos.items():
-        group.sort(key=lambda p: p.mu, reverse=True)
-        for pred in group[:per_position]:
+        by_h = sorted(group, key=lambda p: p.mu_horizon.get(5, p.mu), reverse=True)
+        by_1 = sorted(group, key=lambda p: p.mu, reverse=True)
+        for pred in by_h[:per_position] + by_1[: max(15, per_position // 2)]:
             chosen[pred.player_id] = pred
     return list(chosen.values())
 
@@ -297,24 +335,25 @@ def run_optimize(
     sell_prices = sell_prices or {}
     players = [OptPlayer.from_pred(p, sell_prices.get(p.player_id)) for p in pruned]
     lambda_var = float(cfg.get("lambda_var") or 0.02)
+    horizon = int(cfg.get("horizon_gws") or 5)
+    start_gw = int(event["id"])
+    weeks = list(range(start_gw, start_gw + horizon))
+    discount = float(cfg.get("horizon_discount") or 1.0)
+    kwargs = dict(
+        lambda_var=lambda_var,
+        weeks=weeks,
+        discount=discount,
+        ft_future_value=float(cfg.get("free_transfer_future_value") or 1.5),
+        hit_margin=float(cfg.get("hit_margin") or 1.0),
+    )
     if initial:
-        return choose_plan(
-            players,
-            lambda_var=lambda_var,
-            current_ids=None,
-            bank=0,
-            free_transfers=0,
-            ft_future_value=float(cfg.get("free_transfer_future_value") or 1.5),
-            hit_margin=float(cfg.get("hit_margin") or 1.0),
-        )
+        return choose_plan(players, current_ids=None, bank=0, free_transfers=0, **kwargs)
     return choose_plan(
         players,
-        lambda_var=lambda_var,
         current_ids=set(current_ids or []),
         bank=int(bank or 0),
         free_transfers=int(free_transfers if free_transfers is not None else 1),
-        ft_future_value=float(cfg.get("free_transfer_future_value") or 1.5),
-        hit_margin=float(cfg.get("hit_margin") or 1.0),
+        **kwargs,
     )
 
 

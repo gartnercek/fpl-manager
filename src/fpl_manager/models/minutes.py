@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Sequence
 
 import numpy as np
@@ -51,17 +52,8 @@ def _from_minute_list(minutes: Sequence[float], availability: float) -> MinutesE
         e_cameo = 20.0
     p_start *= availability
     p_cameo *= availability
-    p_ge60 = p_start
-    p_1_59 = p_cameo
-    e_minutes = p_ge60 * e_start + p_1_59 * e_cameo
-    return MinutesEstimate(
-        p_start=p_start,
-        p_cameo=p_cameo,
-        e_minutes=float(e_minutes),
-        p_ge60=p_ge60,
-        p_1_59=p_1_59,
-        p_play=p_ge60 + p_1_59,
-    )
+    e_minutes = p_start * e_start + p_cameo * e_cameo
+    return MinutesEstimate(p_start, p_cameo, e_minutes, p_start, p_cameo, p_start + p_cameo)
 
 
 def _availability(player: dict[str, Any]) -> float:
@@ -77,7 +69,27 @@ def _availability(player: dict[str, Any]) -> float:
     return frac
 
 
-def _new_player_prior(player: dict[str, Any], cfg: dict[str, Any]) -> MinutesEstimate:
+def _f(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def is_summer_signing(player: dict[str, Any], cutoff: str = "2026-06-01") -> bool:
+    raw = player.get("team_join_date")
+    if not raw:
+        return False
+    try:
+        joined = date.fromisoformat(str(raw)[:10])
+        return joined >= date.fromisoformat(cutoff)
+    except ValueError:
+        return False
+
+
+def _price_prior(player: dict[str, Any], cfg: dict[str, Any]) -> MinutesEstimate:
     np_cfg = cfg.get("new_player") or {}
     cost = int(player.get("now_cost") or 0)
     if cost >= int(np_cfg.get("premium_cost", 75)):
@@ -87,11 +99,49 @@ def _new_player_prior(player: dict[str, Any], cfg: dict[str, Any]) -> MinutesEst
     else:
         p_start = float(np_cfg.get("p_start_cheap", 0.10))
     p_cameo = 0.10 if p_start < 0.7 else 0.05
-    avail = _availability(player)
-    p_start *= avail
-    p_cameo *= avail
     e_minutes = p_start * 82.0 + p_cameo * 18.0
     return MinutesEstimate(p_start, p_cameo, e_minutes, p_start, p_cameo, p_start + p_cameo)
+
+
+def _from_season_totals(player: dict[str, Any]) -> MinutesEstimate:
+    minutes = _f(player.get("minutes"))
+    starts = _f(player.get("starts"))
+    if minutes < 90:
+        return MinutesEstimate.zero()
+    games = min(max(starts, minutes / 90.0, 1.0), 38.0)
+    p_start = float(np.clip(starts / games, 0.0, 0.98))
+    leftover_90s = max(minutes / 90.0 - starts * 0.90, 0.0)
+    p_cameo = float(np.clip(leftover_90s / games, 0.0, 1.0 - p_start))
+    e_start = float(np.clip(minutes / max(starts, 1.0), 60.0, 90.0)) if starts else 75.0
+    e_minutes = p_start * e_start + p_cameo * 20.0
+    return MinutesEstimate(p_start, p_cameo, e_minutes, p_start, p_cameo, p_start + p_cameo)
+
+
+def _mix(a: MinutesEstimate, b: MinutesEstimate, w_b: float) -> MinutesEstimate:
+    w = float(np.clip(w_b, 0.0, 1.0))
+    p_start = (1 - w) * a.p_start + w * b.p_start
+    p_cameo = (1 - w) * a.p_cameo + w * b.p_cameo
+    p_cameo = min(p_cameo, max(0.0, 1.0 - p_start))
+    e_minutes = (1 - w) * a.e_minutes + w * b.e_minutes
+    return MinutesEstimate(p_start, p_cameo, e_minutes, p_start, p_cameo, p_start + p_cameo)
+
+
+def _market_start_prob(player: dict[str, Any], full_ownership: float = 25.0) -> float:
+    """Ownership is a GW1 minutes market. 25%+ ≈ nailed; 0% ≈ unknown."""
+    sel = _f(player.get("selected_by_percent"))
+    # logistic around 8% ownership
+    return float(1.0 / (1.0 + np.exp(-(sel - 8.0) / 4.5)))
+
+
+def _apply_avail(est: MinutesEstimate, avail: float) -> MinutesEstimate:
+    return MinutesEstimate(
+        est.p_start * avail,
+        est.p_cameo * avail,
+        est.e_minutes * avail,
+        est.p_ge60 * avail,
+        est.p_1_59 * avail,
+        est.p_play * avail,
+    )
 
 
 def estimate_minutes(
@@ -108,19 +158,30 @@ def estimate_minutes(
     if recent:
         return _from_minute_list(recent, avail)
 
-    minutes = float(player.get("minutes") or 0)
-    starts = float(player.get("starts") or 0)
-    if minutes < 90:
-        return _new_player_prior(player, cfg)
+    mins_cfg = cfg.get("minutes") or {}
+    cutoff = str(mins_cfg.get("summer_cutoff") or "2026-06-01")
+    last_w = float(mins_cfg.get("signing_last_season_weight", 0.40))
+    full_own = float(mins_cfg.get("market_full_ownership", 25.0))
 
-    games = max(starts, minutes / 90.0, 1.0)
-    # Cap the denominator at a full season so one-off cup sides aren't treated as ever-present.
-    games = min(games, 38.0)
-    p_start = float(np.clip(starts / games, 0.0, 0.98))
-    leftover_90s = max(minutes / 90.0 - starts * 0.90, 0.0)
-    p_cameo = float(np.clip(leftover_90s / games, 0.0, 1.0 - p_start))
-    e_start = float(np.clip(minutes / max(starts, 1.0), 60.0, 90.0)) if starts else 75.0
-    p_start *= avail
-    p_cameo *= avail
-    e_minutes = p_start * e_start + p_cameo * 20.0
-    return MinutesEstimate(p_start, p_cameo, e_minutes, p_start, p_cameo, p_start + p_cameo)
+    season = _from_season_totals(player)
+    price = _price_prior(player, cfg)
+    market_p = _market_start_prob(player, full_own)
+    market = MinutesEstimate(market_p, 0.08 * (1 - market_p), market_p * 80.0, market_p, 0.08 * (1 - market_p), 0.0)
+    market.p_play = market.p_start + market.p_cameo
+    market.e_minutes = market.p_start * 82.0 + market.p_cameo * 18.0
+    market.p_ge60 = market.p_start
+    market.p_1_59 = market.p_cameo
+
+    if season.p_play <= 0:
+        mixed = _mix(price, market, 0.45)
+        return _apply_avail(mixed, avail)
+
+    if is_summer_signing(player, cutoff):
+        # Last season was a different club. Do not treat those starts as nailed here.
+        club = _mix(price, season, last_w)
+        mixed = _mix(club, market, 0.35)
+        return _apply_avail(mixed, avail)
+
+    # Same club: last-season minutes dominate, market can lift obvious nailed players.
+    mixed = _mix(season, market, 0.20)
+    return _apply_avail(mixed, avail)

@@ -20,10 +20,10 @@ def _ctx():
         "transfers": [],
         "xi_rows": ["  MID (C) Fernandes"],
         "bench_rows": ["  1 GKP Woodman", "  2 DEF Maatsen"],
-        "xi": [{"pos": "MID", "flag": " (C)", "name": "Fernandes", "mu": 7.0, "sd": 4.0, "price": 12.0}],
+        "xi": [{"pos": "MID", "flag": " (C)", "name": "Fernandes", "mu": 7.0, "mu5": 32.0, "sd": 4.0, "price": 12.0}],
         "bench": [
-            {"slot": 1, "pos": "GKP", "name": "Woodman", "mu": 3.6, "sd": 1.5, "price": 4.0},
-            {"slot": 2, "pos": "DEF", "name": "Maatsen", "mu": 4.9, "sd": 2.0, "price": 4.5},
+            {"slot": 1, "pos": "GKP", "name": "Woodman", "mu": 3.6, "mu5": 16.0, "sd": 1.5, "price": 4.0},
+            {"slot": 2, "pos": "DEF", "name": "Maatsen", "mu": 4.9, "mu5": 20.0, "sd": 2.0, "price": 4.5},
         ],
         "chips": chips,
         "risk_notes": ["none"],
