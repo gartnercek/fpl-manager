@@ -10,6 +10,7 @@ from fpl_manager.config import ROOT
 from fpl_manager.fixtures import Matchup
 from fpl_manager.models.minutes import MinutesEstimate, estimate_minutes, is_summer_signing
 from fpl_manager.models.returns import PositionPriors, build_priors, mean_overall, shrink_rate, team_xgc90
+from fpl_manager.models.setpieces import setpiece_rates
 from fpl_manager.models.simulate import simulate_match
 
 POSITION_NAME = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
@@ -44,6 +45,7 @@ class PlayerPrediction:
     mu_by_gw: dict[int, float] = field(default_factory=dict)
     sigma2_by_gw: dict[int, float] = field(default_factory=dict)
     fixtures: list[FixtureScore] = field(default_factory=list)
+    roles: list[str] = field(default_factory=list)
 
     @property
     def sd(self) -> float:
@@ -99,7 +101,8 @@ def predict_player(
 ) -> PlayerPrediction:
     pos = int(player["element_type"])
     minutes_played = _f(player.get("minutes"))
-    n90 = minutes_played / 90.0
+    raw_n90 = minutes_played / 90.0
+    n90 = raw_n90
     mins_cfg = cfg.get("minutes") or {}
     if is_summer_signing(player, str(mins_cfg.get("summer_cutoff") or "2026-06-01")):
         n90 *= 0.4
@@ -108,6 +111,9 @@ def predict_player(
     form_m = form_attack_multiplier(player, history, cfg)
     xg90 *= form_m
     xa90 *= form_m
+    pieces = setpiece_rates(player, raw_n90, cfg)
+    xg90 = max(0.0, xg90 - pieces.xg90_strip)
+    xa90 = max(0.0, xa90 - pieces.xa90_strip)
     yc90 = shrink_rate(
         (_f(player.get("yellow_cards")) / n90) if n90 > 0 else priors.yc90[pos],
         n90,
@@ -128,7 +134,19 @@ def predict_player(
         gw_var = 0.0
         for matchup in matchups:
             mu, var, p_cs = simulate_match(
-                player, mins, xg90, xa90, yc90, saves90, matchup, teams, team_xgc, mean_r, rng, draws
+                player,
+                mins,
+                xg90,
+                xa90,
+                yc90,
+                saves90,
+                matchup,
+                teams,
+                team_xgc,
+                mean_r,
+                rng,
+                draws,
+                pieces,
             )
             gw_mu += mu
             gw_var += var
@@ -170,6 +188,7 @@ def predict_player(
         mu_by_gw=by_gw,
         sigma2_by_gw=var_by_gw,
         fixtures=next_fx,
+        roles=pieces.roles,
     )
 
 
@@ -241,6 +260,7 @@ def predictions_frame(preds: list[PlayerPrediction], team_names: dict[int, str])
                 "team_id": p.team_id,
                 "now_cost": p.now_cost,
                 "sigma2": p.sigma2,
+                "roles": "/".join(p.roles),
             }
         )
     return pd.DataFrame(rows)

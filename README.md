@@ -72,6 +72,9 @@ email immediately. The daily 09:00 UTC cron only emails when a deadline is withi
 ## Known approximations
 
 - Squad MIP maximises **5-week** XI+captain xP (captain and XI re-picked each GW). GW1 xP is displayed separately.
+- Set pieces: FPL `penalties_order` / corners / direct FKs. Season xG is stripped of a typical PK rate for stayers so pens are not double-counted; new takers get the full PK module. Misses are -2.
+- DEFCON: 2 pts if simulated CBIT/CBIRT hits the FPL threshold (10 DEF / 12 MID-FWD).
+- Formation: 1.2 xP/week penalty for a 5th starting defender; 0.8 for starting only one forward. Players with P(play)<0.55 cannot start.
 - Minutes: last-6 matches when they exist; otherwise last-season totals mixed with price and ownership. Summer signings are not treated as nailed.
 - Form: last-6 xG vs season rate when history exists; otherwise FPL `form` (zero before GW1). GW1 also blends FPL `ep_next`.
 - Points are Monte Carlo (minutes, Poisson returns, and clean sheets share the same draws). Bonus is still `0.3 × (G+A)` inside each draw.

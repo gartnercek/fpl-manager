@@ -79,6 +79,13 @@ class Plan:
     out_ids: list[int] = field(default_factory=list)
 
 
+def _cfg_float(cfg: dict[str, Any], key: str, default: float) -> float:
+    raw = cfg.get(key, default)
+    if raw is None:
+        return default
+    return float(raw)
+
+
 def sell_price(purchase: int, now: int) -> int:
     if now <= purchase:
         return now
@@ -99,6 +106,9 @@ def solve_squad(
     budget: int = BUDGET_TENTHS,
     weeks: list[int] | None = None,
     discount: float = 1.0,
+    fifth_defender_penalty: float = 1.2,
+    one_forward_penalty: float = 0.8,
+    min_start_p_play: float = 0.55,
 ) -> Plan | None:
     """15-man squad. XI and captain are chosen independently each week in `weeks`."""
     ids = [p.id for p in players]
@@ -143,6 +153,19 @@ def solve_squad(
         prob += pulp.lpSum(start[pid][w] for pid in mids) >= 2
         prob += pulp.lpSum(start[pid][w] for pid in fwds) >= 1
 
+    for pid in ids:
+        if by_id[pid].p_play < min_start_p_play:
+            for w in week_ids:
+                prob += start[pid][w] == 0
+
+    fifth = {w: pulp.LpVariable(f"fifth_{w}", cat="Binary") for w in week_ids}
+    one_fwd = {w: pulp.LpVariable(f"onefwd_{w}", cat="Binary") for w in week_ids}
+    for w in week_ids:
+        n_def = pulp.lpSum(start[pid][w] for pid in defs)
+        n_fwd_w = pulp.lpSum(start[pid][w] for pid in fwds)
+        prob += n_def <= 4 + fifth[w]
+        prob += n_fwd_w >= 2 - one_fwd[w]
+
     clubs = {p.team_id for p in players}
     for club in clubs:
         club_ids = [p.id for p in players if p.team_id == club]
@@ -180,6 +203,8 @@ def solve_squad(
             var_term.append(wt * start[pid][w] * var)
             var_term.append(wt * 3.0 * cap[pid][w] * var)
             bench_term.append(wt * BENCH_WEIGHT * (own[pid] - start[pid][w]) * mu)
+        mean_term.append(-wt * fifth_defender_penalty * fifth[w])
+        mean_term.append(-wt * one_forward_penalty * one_fwd[w])
     prob += pulp.lpSum(mean_term) + pulp.lpSum(bench_term) - lambda_var * pulp.lpSum(var_term)
 
     status = prob.solve(_solver())
@@ -246,9 +271,19 @@ def choose_plan(
     hit_margin: float,
     weeks: list[int] | None = None,
     discount: float = 1.0,
+    fifth_defender_penalty: float = 1.2,
+    one_forward_penalty: float = 0.8,
+    min_start_p_play: float = 0.55,
 ) -> Plan:
+    shape = dict(
+        fifth_defender_penalty=fifth_defender_penalty,
+        one_forward_penalty=one_forward_penalty,
+        min_start_p_play=min_start_p_play,
+    )
     if current_ids is None:
-        plan = solve_squad(players, lambda_var=lambda_var, weeks=weeks, discount=discount)
+        plan = solve_squad(
+            players, lambda_var=lambda_var, weeks=weeks, discount=discount, **shape
+        )
         if plan is None:
             raise RuntimeError("Initial squad MIP was infeasible")
         n = len(weeks) if weeks else 1
@@ -267,6 +302,7 @@ def choose_plan(
             bank=bank,
             weeks=weeks,
             discount=discount,
+            **shape,
         )
         if plan is None:
             continue
@@ -334,17 +370,20 @@ def run_optimize(
     pruned = prune_players(preds, None if initial else current_ids)
     sell_prices = sell_prices or {}
     players = [OptPlayer.from_pred(p, sell_prices.get(p.player_id)) for p in pruned]
-    lambda_var = float(cfg.get("lambda_var") or 0.02)
+    lambda_var = _cfg_float(cfg, "lambda_var", 0.02)
     horizon = int(cfg.get("horizon_gws") or 5)
     start_gw = int(event["id"])
     weeks = list(range(start_gw, start_gw + horizon))
-    discount = float(cfg.get("horizon_discount") or 1.0)
+    discount = _cfg_float(cfg, "horizon_discount", 1.0)
     kwargs = dict(
         lambda_var=lambda_var,
         weeks=weeks,
         discount=discount,
-        ft_future_value=float(cfg.get("free_transfer_future_value") or 1.5),
-        hit_margin=float(cfg.get("hit_margin") or 1.0),
+        ft_future_value=_cfg_float(cfg, "free_transfer_future_value", 1.5),
+        hit_margin=_cfg_float(cfg, "hit_margin", 1.0),
+        fifth_defender_penalty=_cfg_float(cfg, "fifth_defender_penalty", 1.2),
+        one_forward_penalty=_cfg_float(cfg, "one_forward_penalty", 0.8),
+        min_start_p_play=_cfg_float(cfg, "min_start_p_play", 0.55),
     )
     if initial:
         return choose_plan(players, current_ids=None, bank=0, free_transfers=0, **kwargs)

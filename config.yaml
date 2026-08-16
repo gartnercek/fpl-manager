@@ -14,6 +14,18 @@ lambda_var: 0.02
 hit_margin: 1.0
 free_transfer_future_value: 1.5
 wildcard_gap_threshold: 12.0
+fifth_defender_penalty: 1.2
+one_forward_penalty: 0.8
+min_start_p_play: 0.55
+
+set_pieces:
+  pk_per_match: 0.13
+  pk_conversion: 0.76
+  historical_pk_xg90: 0.09
+  corner_xa90: 0.16
+  fk_xg90: 0.04
+  historical_corner_xa90: 0.12
+  historical_fk_xg90: 0.03
 
 form:
   points_slope: 0.08

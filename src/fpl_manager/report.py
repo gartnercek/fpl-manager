@@ -123,16 +123,24 @@ def render_report(
     else:
         actions.insert(0, "No transfers required" if plan.mode != "initial" else "Set this 15 before the GW1 deadline")
 
+    n_def = sum(1 for pid in plan.starters if by_id[pid].position == 2)
+    n_mid = sum(1 for pid in plan.starters if by_id[pid].position == 3)
+    n_fwd = sum(1 for pid in plan.starters if by_id[pid].position == 4)
+    actions.append(f"Formation {n_def}-{n_mid}-{n_fwd}")
+
     xi = []
     xi_rows = []
     for pid in sorted(plan.starters, key=lambda i: (by_id[i].position, -by_id[i].mu)):
         p = by_id[pid]
         flag = _flag(plan, pid)
+        label = p.web_name
+        if p.roles:
+            label = f"{label} [{'/'.join(p.roles)}]"
         xi.append(
             {
                 "pos": POS[p.position],
                 "flag": flag,
-                "name": p.web_name,
+                "name": label,
                 "mu": p.mu,
                 "sd": p.sd,
                 "price": p.now_cost / 10,
@@ -140,18 +148,21 @@ def render_report(
             }
         )
         xi_rows.append(
-            f"  {POS[p.position]}{flag:4} {p.web_name:<16} {p.mu:5.2f}  5GW {p.mu_horizon.get(5, p.mu):5.1f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
+            f"  {POS[p.position]}{flag:4} {label:<22} {p.mu:5.2f}  5GW {p.mu_horizon.get(5, p.mu):5.1f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
         )
 
     bench = []
     bench_rows = []
     for slot, pid in enumerate(plan.bench, start=1):
         p = by_id[pid]
+        blabel = p.web_name
+        if p.roles:
+            blabel = f"{blabel} [{'/'.join(p.roles)}]"
         bench.append(
             {
                 "slot": slot,
                 "pos": POS[p.position],
-                "name": p.web_name,
+                "name": blabel,
                 "mu": p.mu,
                 "sd": p.sd,
                 "price": p.now_cost / 10,
@@ -159,7 +170,7 @@ def render_report(
             }
         )
         bench_rows.append(
-            f"  {slot} {POS[p.position]:<3} {p.web_name:<16} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
+            f"  {slot} {POS[p.position]:<3} {blabel:<22} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
         )
     bench_names = ", ".join(f"{b['slot']}. {b['name']}" for b in bench)
     if bench_names:
@@ -179,7 +190,14 @@ def render_report(
     appendix = []
     for pos in (1, 2, 3, 4):
         group = sorted([p for p in preds if p.position == pos], key=lambda p: p.mu, reverse=True)[:8]
-        appendix.append(POS[pos] + ": " + ", ".join(f"{p.web_name} {p.mu:.1f}" for p in group))
+        appendix.append(
+            POS[pos]
+            + ": "
+            + ", ".join(
+                f"{p.web_name}{' [' + '/'.join(p.roles) + ']' if p.roles else ''} {p.mu:.1f}"
+                for p in group
+            )
+        )
 
     ctx = {
         "gw": event["id"],

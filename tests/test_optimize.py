@@ -101,3 +101,15 @@ def test_five_week_objective_keeps_steady_forward():
     assert plan is not None
     assert 31 in plan.owned
     assert plan.captain == 30
+
+
+def test_low_p_play_cannot_start():
+    pool = _pool()
+    for p in pool:
+        if p.id == 10:
+            p.p_play = 0.40
+            p.mu = 20.0
+            p.mu_h3 = 60.0
+    plan = solve_squad(pool, lambda_var=0.0)
+    assert plan is not None
+    assert 10 not in plan.starters
