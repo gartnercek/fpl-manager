@@ -1,6 +1,6 @@
 # Public FPL team ID (from the URL: fantasy.premierleague.com/entry/<id>/).
-# Leave 0 until you set it; M1 (xP table) does not need it.
-team_id: 0
+# GitHub Actions can override this with repository variable FPL_TEAM_ID.
+team_id: 4846735
 
 # Squad is chosen on this many upcoming gameweeks (XI + captain re-picked each week).
 horizon_gws: 5
