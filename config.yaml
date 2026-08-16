@@ -1,0 +1,41 @@
+# Public FPL team ID (from the URL: fantasy.premierleague.com/entry/<id>/).
+# Leave 0 until you set it; M1 (xP table) does not need it.
+team_id: 0
+
+# Mean-variance: maximize E[points] - lambda_risk * SD[points] in reports.
+# The MIP uses the linear equivalent: E[points] - lambda_var * Var[points].
+lambda_risk: 0.15
+lambda_var: 0.02
+
+horizon_gws: 6
+hit_margin: 1.0
+free_transfer_future_value: 1.5
+wildcard_gap_threshold: 12.0
+
+# Chip stopping-rule priors (used until doubles are confirmed on the fixture list).
+chips:
+  mc_draws: 2000
+  epsilon: 0.5
+  p_future_dgw: 0.9
+  dgw_captain_multiplier: 1.6
+  v_noise_sd: 0.8
+
+# Early-season / no-history minutes priors for unused players, by price (tenths).
+new_player:
+  premium_cost: 75
+  mid_cost: 55
+  p_start_premium: 0.75
+  p_start_mid: 0.40
+  p_start_cheap: 0.10
+
+email:
+  timezone: Europe/Ljubljana
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  # SMTP_USER, SMTP_PASSWORD, EMAIL_TO come from environment / GitHub secrets.
+
+schedule:
+  email_within_hours: 60
+  delta_within_hours: 24
+
+fetch_element_summaries: false
