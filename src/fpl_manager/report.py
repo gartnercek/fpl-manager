@@ -34,7 +34,7 @@ TRANSFERS
 STARTING XI  (xP {{ '%.2f'|format(plan.xi_mu) }} +/- {{ '%.2f'|format(plan.xi_sd) }})
 {% for row in xi_rows %}{{ row }}
 {% endfor %}
-BENCH
+BENCH (auto-sub order: slot 1 = backup GK, 2-4 = outfield priority)
 {% for row in bench_rows %}{{ row }}
 {% endfor %}
 CHIPS
@@ -69,6 +69,14 @@ HTML_TEMPLATE = Template(
 {% endfor %}
 </table>
 <p>XI xP with captain: {{ '%.2f'|format(plan.xi_mu) }} ± {{ '%.2f'|format(plan.xi_sd) }}</p>
+<h3>Bench (auto-sub order)</h3>
+<p>Put them in this order on the FPL bench. Slot 1 is usually the backup GK; slots 2-4 are outfield auto-sub priority.</p>
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>Slot</th><th></th><th>Player</th><th>xP</th><th>sd</th><th>Price</th></tr>
+{% for p in bench %}
+<tr><td>{{ p.slot }}</td><td>{{ p.pos }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
+{% endfor %}
+</table>
 <h3>Chips</h3>
 <p>{{ chips.triple_captain.reason }}</p>
 <p>{{ chips.bench_boost.reason }}</p>
@@ -130,10 +138,26 @@ def render_report(
         )
         xi_rows.append(f"  {POS[p.position]}{flag:4} {p.web_name:<16} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m")
 
+    bench = []
     bench_rows = []
-    for pid in plan.bench:
+    for slot, pid in enumerate(plan.bench, start=1):
         p = by_id[pid]
-        bench_rows.append(f"  {POS[p.position]}     {p.web_name:<16} {p.mu:5.2f}  {p.now_cost / 10:4.1f}m")
+        bench.append(
+            {
+                "slot": slot,
+                "pos": POS[p.position],
+                "name": p.web_name,
+                "mu": p.mu,
+                "sd": p.sd,
+                "price": p.now_cost / 10,
+            }
+        )
+        bench_rows.append(
+            f"  {slot} {POS[p.position]:<3} {p.web_name:<16} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
+        )
+    bench_names = ", ".join(f"{b['slot']}. {b['name']}" for b in bench)
+    if bench_names:
+        actions.append(f"Bench order: {bench_names}")
 
     transfers = list(zip([by_id[i].web_name for i in plan.out_ids], [by_id[i].web_name for i in plan.in_ids]))
     risk_notes = []
@@ -161,6 +185,7 @@ def render_report(
         "xi_rows": xi_rows,
         "bench_rows": bench_rows,
         "xi": xi,
+        "bench": bench,
         "chips": chips,
         "risk_notes": risk_notes,
         "appendix": appendix,
