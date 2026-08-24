@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from fpl_manager.optimize import OptPlayer, sell_price, solve_squad
+from fpl_manager.optimize import OptPlayer, choose_plan, sell_price, solve_squad
 
 
 def P(pid, name, pos, team, cost, mu, var=1.0):
@@ -113,3 +113,100 @@ def test_low_p_play_cannot_start():
     plan = solve_squad(pool, lambda_var=0.0)
     assert plan is not None
     assert 10 not in plan.starters
+
+
+def test_vice_is_second_best_starter_by_mu():
+    plan = solve_squad(_pool(), lambda_var=0.0)
+    assert plan is not None
+    by_id = {p.id: p for p in _pool()}
+    ordered = sorted(plan.starters, key=lambda i: -by_id[i].mu)
+    assert plan.captain == ordered[0]
+    assert plan.vice == ordered[1]
+
+
+def _plan_kwargs(**overrides):
+    base = dict(
+        lambda_var=0.0,
+        bank=0,
+        free_transfers=1,
+        ft_future_value=1.5,
+        hit_margin=1.0,
+        weeks=[1, 2, 3, 4, 5],
+        wildcard_available=False,
+        free_hit_available=False,
+        wildcard_gap_threshold=12.0,
+        free_hit_gap_threshold=8.0,
+        event_id=2,
+    )
+    base.update(overrides)
+    return base
+
+
+def test_wildcard_rebuilds_when_current_squad_is_dead():
+    pool = _pool()
+    initial = solve_squad(pool, lambda_var=0.0, weeks=[1, 2, 3, 4, 5])
+    current = set(initial.owned)
+    for p in pool:
+        weeks = {w: (0.4 if p.id in current else 8.0) for w in range(1, 6)}
+        p.mu = weeks[1]
+        p.mu_h3 = weeks[1] * 3
+        p.mu_by_gw = weeks
+    plan = choose_plan(pool, current_ids=current, **_plan_kwargs(wildcard_available=True, wildcard_gap_threshold=1.0))
+    assert plan.mode == "wildcard"
+    assert len(plan.in_ids) >= 3
+
+
+def test_wildcard_held_when_gap_is_small():
+    pool = _pool()
+    initial = solve_squad(pool, lambda_var=0.0, weeks=[1, 2, 3, 4, 5])
+    current = set(initial.owned)
+    plan = choose_plan(pool, current_ids=current, **_plan_kwargs(wildcard_available=True, wildcard_gap_threshold=12.0))
+    assert plan.mode == "transfers"
+    assert any("Wildcard held" in n or "held" in n for n in plan.notes)
+
+
+def test_wildcard_held_in_secretary_sample_even_if_gap_is_large():
+    pool = _pool()
+    initial = solve_squad(pool, lambda_var=0.0, weeks=[1, 2, 3, 4, 5])
+    current = set(initial.owned)
+    for p in pool:
+        weeks = {w: (0.4 if p.id in current else 8.0) for w in range(1, 6)}
+        p.mu = weeks[1]
+        p.mu_h3 = weeks[1] * 3
+        p.mu_by_gw = weeks
+    stop = {
+        "prior_gws": 5.0,
+        "explore_fraction": 0.37,
+        "wc_typical": 16.0,
+        "wc_noise_sd": 8.0,
+        "wc_override": 32.0,
+        "epsilon": 0.5,
+        "p_future_dgw": 0.0,
+        "mc_draws": 200,
+    }
+    plan = choose_plan(
+        pool,
+        current_ids=current,
+        **_plan_kwargs(wildcard_available=True, wildcard_gap_threshold=1.0, rebuild_stop=stop),
+    )
+    assert plan.mode == "transfers"
+
+
+def test_free_hit_preferred_for_one_week_punt():
+    pool = _pool()
+    initial = solve_squad(pool, lambda_var=0.0, weeks=[1, 2, 3, 4, 5])
+    current = set(initial.owned)
+    for p in pool:
+        if p.id in current:
+            p.mu_by_gw = {1: 0.5, 2: 6.0, 3: 6.0, 4: 6.0, 5: 6.0}
+        else:
+            p.mu_by_gw = {1: 12.0, 2: 0.3, 3: 0.3, 4: 0.3, 5: 0.3}
+        p.mu = p.mu_by_gw[1]
+        p.mu_h3 = sum(p.mu_by_gw[w] for w in (1, 2, 3))
+    plan = choose_plan(
+        pool,
+        current_ids=current,
+        **_plan_kwargs(wildcard_available=True, free_hit_available=True, wildcard_gap_threshold=12.0, free_hit_gap_threshold=1.0),
+    )
+    assert plan.mode == "free_hit"
+    assert plan.in_ids

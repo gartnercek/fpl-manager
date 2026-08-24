@@ -69,5 +69,6 @@ def load_entry_state(
         "sell_prices": sells,
         "bank": int(bank or 0),
         "chips_used": chips_used,
+        "chip_records": list(history.get("chips") or []),
         "picks": picks,
     }

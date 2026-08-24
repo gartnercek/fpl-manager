@@ -72,6 +72,8 @@ email immediately. The daily 09:00 UTC cron only emails when a deadline is withi
 ## Known approximations
 
 - Squad MIP maximises **5-week** XI+captain xP (captain and XI re-picked each GW). GW1 xP is displayed separately.
+- Each week it compares T=0/1/2 transfers (including -4 hits), a **Wildcard** rebuild, and a **Free Hit** (this GW only, then revert). A 5-week MIP scores the new 15 (so a 100-then-10 punt loses to 60-then-60). WC/FH then have a **stopping rule**: the gap is shrunk until there is this-season data, the first ~1/e weeks of the half are sample-only (unless the trusted gap is huge), then play iff that beats E[best remaining swing]. Unused chips still get cheaper to play in the last 3 GWs of GW19 / GW38.
+- One chip per week: if WC or FH is the move, TC/BB are held.
 - Set pieces: FPL `penalties_order` / corners / direct FKs. Season xG is stripped of a typical PK rate for stayers so pens are not double-counted; new takers get the full PK module. Misses are -2.
 - DEFCON: 2 pts if simulated CBIT/CBIRT hits the FPL threshold (10 DEF / 12 MID-FWD).
 - Formation: 1.2 xP/week penalty for a 5th starting defender; 0.8 for starting only one forward. Players with P(play)<0.55 cannot start.

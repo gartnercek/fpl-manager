@@ -64,6 +64,7 @@ def run_pipeline(cfg: dict[str, Any], *, fetch_summaries: bool = False):
     bank = None
     sells = None
     chips_used: list[str] = []
+    chip_records: list = []
     free_transfers = int(load_state().get("free_transfers") or 1)
     if team_id:
         now_costs = {int(p["id"]): int(p["now_cost"]) for p in bootstrap["elements"]}
@@ -72,6 +73,7 @@ def run_pipeline(cfg: dict[str, Any], *, fetch_summaries: bool = False):
         bank = squad["bank"]
         sells = squad["sell_prices"]
         chips_used = [str(c) for c in squad["chips_used"] if c]
+        chip_records = list(squad.get("chip_records") or [])
 
     plan = run_optimize(
         cfg,
@@ -82,6 +84,7 @@ def run_pipeline(cfg: dict[str, Any], *, fetch_summaries: bool = False):
         bank=bank,
         sell_prices=sells,
         free_transfers=free_transfers,
+        chip_records=chip_records,
     )
     chips = advise_chips(
         preds,

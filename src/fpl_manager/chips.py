@@ -189,6 +189,33 @@ def advise_chips(
         "bboost" in used or "bench" in "".join(used),
     )
 
+    if plan.mode in ("wildcard", "free_hit"):
+        chip = "wildcard" if plan.mode == "wildcard" else "free_hit"
+        hold_tc = ChipVerdict(
+            "triple_captain",
+            False,
+            v_tc_now,
+            0.0,
+            None,
+            f"HOLD triple_captain: {chip} is the chip this week (one chip per GW).",
+        )
+        hold_bb = ChipVerdict(
+            "bench_boost",
+            False,
+            v_bb_now,
+            0.0,
+            None,
+            f"HOLD bench_boost: {chip} is the chip this week (one chip per GW).",
+        )
+        wc_note = None
+        fh_note = None
+        detail = plan.notes[-1] if plan.notes else ""
+        if plan.mode == "wildcard":
+            wc_note = detail or "PLAY wildcard."
+        else:
+            fh_note = detail or "PLAY free hit. Squad reverts after this GW."
+        return ChipAdvice(hold_tc, hold_bb, wc_note, fh_note)
+
     if tc.play and bb.play:
         tc_edge = tc.v_now - tc.e_max_future
         bb_edge = bb.v_now - bb.e_max_future

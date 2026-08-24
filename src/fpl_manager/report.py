@@ -81,6 +81,7 @@ HTML_TEMPLATE = Template(
 <p>{{ chips.triple_captain.reason }}</p>
 <p>{{ chips.bench_boost.reason }}</p>
 {% if chips.wildcard_note %}<p>{{ chips.wildcard_note }}</p>{% endif %}
+{% if chips.free_hit_note %}<p>{{ chips.free_hit_note }}</p>{% endif %}
 <h3>Risk</h3>
 <ul>{% for note in risk_notes %}<li>{{ note }}</li>{% endfor %}</ul>
 </body></html>
@@ -118,7 +119,11 @@ def render_report(
     ]
     if plan.notes:
         actions.insert(1, plan.notes[0])
-    if plan.in_ids:
+    if plan.mode == "wildcard":
+        actions.insert(0, f"PLAY WILDCARD ({plan.transfers} free changes)")
+    elif plan.mode == "free_hit":
+        actions.insert(0, f"PLAY FREE HIT ({plan.transfers} free changes; squad reverts after this GW)")
+    elif plan.in_ids:
         actions.insert(0, f"Transfers ({plan.transfers}, hit -{plan.hit_cost}): {plan.out_ids} -> {plan.in_ids}")
     else:
         actions.insert(0, "No transfers required" if plan.mode != "initial" else "Set this 15 before the GW1 deadline")
@@ -175,8 +180,14 @@ def render_report(
     bench_names = ", ".join(f"{b['slot']}. {b['name']}" for b in bench)
     if bench_names:
         actions.append(f"Bench order: {bench_names}")
+    for note in plan.notes:
+        if "Wildcard" in note or "Free Hit" in note or "wildcard" in note or "free hit" in note:
+            if note not in actions:
+                actions.append(note)
 
-    transfers = list(zip([by_id[i].web_name for i in plan.out_ids], [by_id[i].web_name for i in plan.in_ids]))
+    out_sorted = sorted(plan.out_ids, key=lambda i: (by_id[i].position, -by_id[i].now_cost))
+    in_sorted = sorted(plan.in_ids, key=lambda i: (by_id[i].position, -by_id[i].now_cost))
+    transfers = list(zip([by_id[i].web_name for i in out_sorted], [by_id[i].web_name for i in in_sorted]))
     risk_notes = []
     for pid in plan.starters:
         p = by_id[pid]
@@ -216,7 +227,12 @@ def render_report(
     }
     text = TEXT_TEMPLATE.render(**ctx)
     html = HTML_TEMPLATE.render(**ctx)
-    subject = f"FPL GW{event['id']}: {cap.web_name} (C), xP {plan.xi_mu:.1f}"
+    prefix = ""
+    if plan.mode == "wildcard":
+        prefix = "WILDCARD, "
+    elif plan.mode == "free_hit":
+        prefix = "FREE HIT, "
+    subject = f"FPL GW{event['id']}: {prefix}{cap.web_name} (C), xP {plan.xi_mu:.1f}"
     return subject, text, html
 
 
@@ -227,6 +243,7 @@ def fingerprint(plan: Plan, chips: ChipAdvice) -> str:
         "c": plan.captain,
         "v": plan.vice,
         "xi": sorted(plan.starters),
+        "mode": plan.mode,
         "tc": chips.triple_captain.play,
         "bb": chips.bench_boost.play,
     }

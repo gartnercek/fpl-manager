@@ -14,6 +14,7 @@ lambda_var: 0.02
 hit_margin: 1.0
 free_transfer_future_value: 1.5
 wildcard_gap_threshold: 12.0
+free_hit_gap_threshold: 8.0
 fifth_defender_penalty: 1.2
 one_forward_penalty: 0.8
 min_start_p_play: 0.55
@@ -42,7 +43,18 @@ chips:
   epsilon: 0.5
   p_future_dgw: 0.9
   dgw_captain_multiplier: 1.6
+  dgw_chip_multiplier: 1.35
   v_noise_sd: 0.8
+  # Wildcard / Free Hit: shrink the MIP gap until we have this-season data, skip the
+  # first n/e weeks of the half (secretary sample), then stop vs E[best remaining swing].
+  prior_gws: 5.0
+  explore_fraction: 0.37
+  wc_typical: 16.0
+  wc_noise_sd: 8.0
+  wc_override: 32.0
+  fh_typical: 10.0
+  fh_noise_sd: 5.0
+  fh_override: 20.0
 
 # Early-season / no-history minutes priors for unused players, by price (tenths).
 new_player:

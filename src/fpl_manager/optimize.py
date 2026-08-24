@@ -6,6 +6,12 @@ from typing import Any, Iterable
 import numpy as np
 import pulp
 
+from fpl_manager.chip_rules import (
+    decide_rebuild_chip,
+    expiry_adjusted_threshold,
+    free_hit_available,
+    wildcard_available,
+)
 from fpl_manager.models.aggregate import PlayerPrediction
 
 BUDGET_TENTHS = 1000
@@ -109,6 +115,10 @@ def solve_squad(
     fifth_defender_penalty: float = 1.2,
     one_forward_penalty: float = 0.8,
     min_start_p_play: float = 0.55,
+    keep_ids: set[int] | None = None,
+    compare_ids: set[int] | None = None,
+    discount_offset: int = 0,
+    mode: str | None = None,
 ) -> Plan | None:
     """15-man squad. XI and captain are chosen independently each week in `weeks`."""
     ids = [p.id for p in players]
@@ -171,8 +181,14 @@ def solve_squad(
         club_ids = [p.id for p in players if p.team_id == club]
         prob += pulp.lpSum(own[pid] for pid in club_ids) <= MAX_PER_CLUB
 
+    def _buy_cost(pid: int) -> int:
+        p = by_id[pid]
+        if keep_ids and pid in keep_ids:
+            return p.sell_cost
+        return p.now_cost
+
     if current_ids is None:
-        prob += pulp.lpSum(own[pid] * by_id[pid].now_cost for pid in ids) <= budget
+        prob += pulp.lpSum(own[pid] * _buy_cost(pid) for pid in ids) <= budget
         t_used = 0
         hit = 0
     else:
@@ -193,7 +209,7 @@ def solve_squad(
     var_term = []
     bench_term = []
     for i, w in enumerate(week_ids):
-        wt = discount**i
+        wt = discount ** (i + discount_offset)
         for pid in ids:
             p = by_id[pid]
             mu = p.mu_at(w)
@@ -214,7 +230,8 @@ def solve_squad(
     owned = [pid for pid in ids if own[pid].value() > 0.5]
     starters = [pid for pid in ids if start[pid][w0].value() > 0.5]
     captain = next(pid for pid in ids if cap[pid][w0].value() > 0.5)
-    vice = next(pid for pid in ids if vice[pid].value() > 0.5)
+    vice_candidates = [pid for pid in starters if pid != captain]
+    vice = max(vice_candidates, key=lambda pid: by_id[pid].mu_at(w0)) if vice_candidates else captain
     bench = _order_bench(owned, starters, by_id)
     xi_mu = sum(by_id[pid].mu_at(w0) for pid in starters) + by_id[captain].mu_at(w0)
     xi_var = sum(by_id[pid].var_at(w0) for pid in starters) + 3.0 * by_id[captain].var_at(w0)
@@ -225,15 +242,18 @@ def solve_squad(
     cost = sum(by_id[pid].now_cost for pid in owned)
     in_list: list[int] = []
     out_list: list[int] = []
-    bank_after = budget - cost
-    if current_ids is not None:
-        in_list = [pid for pid in owned if pid not in current_ids]
-        out_list = [pid for pid in current_ids if pid not in owned]
-        sold = sum(by_id[pid].sell_cost for pid in out_list)
+    bank_after = budget - sum(_buy_cost(pid) for pid in owned)
+    source_ids = current_ids if current_ids is not None else compare_ids
+    if source_ids is not None:
+        in_list = [pid for pid in owned if pid not in source_ids]
+        out_list = [pid for pid in source_ids if pid not in owned]
+        sold = sum(by_id[pid].sell_cost for pid in out_list if pid in by_id)
         bought = sum(by_id[pid].now_cost for pid in in_list)
         bank_after = bank + sold - bought
+        if current_ids is not None:
+            t_used = len(in_list)
     return Plan(
-        mode="initial" if current_ids is None else "transfers",
+        mode=mode or ("initial" if current_ids is None else "transfers"),
         transfers=t_used,
         hit_cost=hit,
         owned=owned,
@@ -274,6 +294,12 @@ def choose_plan(
     fifth_defender_penalty: float = 1.2,
     one_forward_penalty: float = 0.8,
     min_start_p_play: float = 0.55,
+    wildcard_available: bool = False,
+    free_hit_available: bool = False,
+    wildcard_gap_threshold: float = 12.0,
+    free_hit_gap_threshold: float = 8.0,
+    event_id: int | None = None,
+    rebuild_stop: dict[str, Any] | None = None,
 ) -> Plan:
     shape = dict(
         fifth_defender_penalty=fifth_defender_penalty,
@@ -318,15 +344,121 @@ def choose_plan(
     by_t = {p.transfers: p for p in candidates}
     base_t = min(free_transfers, max(by_t))
     base = by_t.get(base_t) or candidates[0]
-    best = max(candidates, key=lambda p: p.objective)
-    if best.hit_cost > 0:
-        gain3 = best.horizon3 - base.horizon3
-        if gain3 < best.hit_cost + hit_margin:
-            best.notes.append(
-                f"Hit rejected: 3GW gain {gain3:.1f} < {best.hit_cost}+{hit_margin} margin. Rolling back to T={base.transfers}."
+    best_t = max(candidates, key=lambda p: p.objective)
+    if best_t.hit_cost > 0:
+        gain3 = best_t.horizon3 - base.horizon3
+        if gain3 < best_t.hit_cost + hit_margin:
+            best_t.notes.append(
+                f"Hit rejected: 3GW gain {gain3:.1f} < {best_t.hit_cost}+{hit_margin} margin. Rolling back to T={base.transfers}."
             )
-            return base
-    return best
+            best_t = base
+
+    week_ids = list(weeks) if weeks else sorted({w for p in players for w in p.mu_by_gw}) or [0]
+    by_id = {p.id: p for p in players}
+    wc_budget = sum(by_id[pid].sell_cost for pid in current_ids if pid in by_id) + int(bank)
+    ft_keep = free_transfers * ft_future_value
+    gw = int(event_id or (week_ids[0] if week_ids else 2))
+    wc_bar = expiry_adjusted_threshold(wildcard_gap_threshold, gw)
+    fh_bar = expiry_adjusted_threshold(free_hit_gap_threshold, gw)
+
+    if wildcard_available:
+        wc = solve_squad(
+            players,
+            lambda_var=lambda_var,
+            current_ids=None,
+            bank=bank,
+            budget=wc_budget,
+            weeks=week_ids,
+            discount=discount,
+            keep_ids=current_ids,
+            compare_ids=current_ids,
+            mode="wildcard",
+            **shape,
+        )
+        if wc is not None:
+            wc.transfers = len(wc.in_ids)
+            wc.hit_cost = 0
+            wc.objective = wc.objective + ft_keep
+            gap = wc.objective - best_t.objective
+            wc.notes.append(
+                f"Wildcard rebuild {wc.transfers} changes, {gap:+.1f} xP vs best transfer plan (need +{wc_bar:.1f})."
+            )
+            play, why = True, ""
+            if rebuild_stop:
+                play, why = decide_rebuild_chip(gap, gw, bar=wc_bar, **_rebuild_stop_args(rebuild_stop, "wc"))
+                wc.notes.append(f"Wildcard {why}")
+            if gap >= wc_bar and play:
+                candidates.append(wc)
+            else:
+                best_t.notes.append(
+                    why or f"Wildcard held: rebuild {gap:+.1f} 5GW xP, below +{wc_bar:.1f} bar."
+                )
+
+    if free_hit_available:
+        fh = solve_squad(
+            players,
+            lambda_var=lambda_var,
+            current_ids=None,
+            bank=bank,
+            budget=wc_budget,
+            weeks=week_ids[:1],
+            discount=discount,
+            keep_ids=current_ids,
+            compare_ids=current_ids,
+            mode="free_hit",
+            **shape,
+        )
+        rest = None
+        if len(week_ids) > 1:
+            rest = solve_squad(
+                players,
+                lambda_var=lambda_var,
+                current_ids=current_ids,
+                transfers=0,
+                bank=bank,
+                weeks=week_ids[1:],
+                discount=discount,
+                discount_offset=1,
+                **shape,
+            )
+        if fh is not None:
+            fh.transfers = len(fh.in_ids)
+            fh.hit_cost = 0
+            rest_obj = rest.objective if rest is not None else 0.0
+            fh.objective = fh.objective + rest_obj + ft_keep
+            if rest is not None:
+                fh.horizon3 = fh.xi_mu + rest.horizon3
+            gap = fh.objective - best_t.objective
+            fh.notes.append(
+                f"Free Hit (reverts next GW) {fh.transfers} changes, {gap:+.1f} xP vs best transfer plan (need +{fh_bar:.1f})."
+            )
+            play, why = True, ""
+            if rebuild_stop:
+                play, why = decide_rebuild_chip(gap, gw, bar=fh_bar, **_rebuild_stop_args(rebuild_stop, "fh"))
+                fh.notes.append(f"Free Hit {why}")
+            if gap >= fh_bar and play:
+                candidates.append(fh)
+            else:
+                best_t.notes.append(
+                    why or f"Free Hit held: one-week punt {gap:+.1f} xP, below +{fh_bar:.1f} bar."
+                )
+
+    return max(candidates, key=lambda p: p.objective)
+
+
+def _rebuild_stop_args(cfg: dict[str, Any], kind: str) -> dict[str, Any]:
+    prefix = "wc" if kind == "wc" else "fh"
+    return dict(
+        typical=float(cfg.get(f"{prefix}_typical", 16.0 if kind == "wc" else 10.0)),
+        noise_sd=float(cfg.get(f"{prefix}_noise_sd", 8.0 if kind == "wc" else 5.0)),
+        override=float(cfg.get(f"{prefix}_override", 32.0 if kind == "wc" else 20.0)),
+        prior_gws=float(cfg.get("prior_gws", 5.0)),
+        explore_fraction=float(cfg.get("explore_fraction", 0.37)),
+        epsilon=float(cfg.get("epsilon", 0.5)),
+        p_future_dgw=float(cfg.get("p_future_dgw", 0.9)),
+        dgw_multiplier=float(cfg.get("dgw_chip_multiplier", 1.35)),
+        draws=int(cfg.get("mc_draws", 2000)),
+    )
 
 
 def prune_players(
@@ -364,9 +496,10 @@ def run_optimize(
     bank: int | None = None,
     sell_prices: dict[int, int] | None = None,
     free_transfers: int | None = None,
+    chip_records: Iterable[Any] | None = None,
 ) -> Plan:
     event_id = int(event["id"])
-    initial = current_ids is None or (event_id == 1 and not event.get("finished"))
+    initial = current_ids is None
     pruned = prune_players(preds, None if initial else current_ids)
     sell_prices = sell_prices or {}
     players = [OptPlayer.from_pred(p, sell_prices.get(p.player_id)) for p in pruned]
@@ -375,6 +508,7 @@ def run_optimize(
     start_gw = int(event["id"])
     weeks = list(range(start_gw, start_gw + horizon))
     discount = _cfg_float(cfg, "horizon_discount", 1.0)
+    records = list(chip_records or [])
     kwargs = dict(
         lambda_var=lambda_var,
         weeks=weeks,
@@ -384,6 +518,12 @@ def run_optimize(
         fifth_defender_penalty=_cfg_float(cfg, "fifth_defender_penalty", 1.2),
         one_forward_penalty=_cfg_float(cfg, "one_forward_penalty", 0.8),
         min_start_p_play=_cfg_float(cfg, "min_start_p_play", 0.55),
+        wildcard_available=wildcard_available(records, event_id),
+        free_hit_available=free_hit_available(records, event_id),
+        wildcard_gap_threshold=_cfg_float(cfg, "wildcard_gap_threshold", 12.0),
+        free_hit_gap_threshold=_cfg_float(cfg, "free_hit_gap_threshold", 8.0),
+        event_id=event_id,
+        rebuild_stop=dict(cfg.get("chips") or {}),
     )
     if initial:
         return choose_plan(players, current_ids=None, bank=0, free_transfers=0, **kwargs)
