@@ -229,9 +229,11 @@ def solve_squad(
 
     owned = [pid for pid in ids if own[pid].value() > 0.5]
     starters = [pid for pid in ids if start[pid][w0].value() > 0.5]
-    captain = next(pid for pid in ids if cap[pid][w0].value() > 0.5)
-    vice_candidates = [pid for pid in starters if pid != captain]
-    vice = max(vice_candidates, key=lambda pid: by_id[pid].mu_at(w0)) if vice_candidates else captain
+    # Recommend (C)/(V) by this-GW xP. The MIP still uses mean-variance when
+    # choosing who to own and start; the armband should be the highest xP starter.
+    ranked = sorted(starters, key=lambda pid: by_id[pid].mu_at(w0), reverse=True)
+    captain = ranked[0]
+    vice = ranked[1] if len(ranked) > 1 else captain
     bench = _order_bench(owned, starters, by_id)
     xi_mu = sum(by_id[pid].mu_at(w0) for pid in starters) + by_id[captain].mu_at(w0)
     xi_var = sum(by_id[pid].var_at(w0) for pid in starters) + 3.0 * by_id[captain].var_at(w0)
@@ -341,10 +343,46 @@ def choose_plan(
     if not candidates:
         raise RuntimeError("No feasible transfer plan")
 
-    by_t = {p.transfers: p for p in candidates}
+    by_id = {p.id: p for p in players}
+
+    def _incoming_starts_this_gw(plan: Plan) -> bool:
+        """Next week's FT can bring in a player who would sit today (except a backup GK)."""
+        starters = set(plan.starters)
+        for pid in plan.in_ids:
+            if pid in starters:
+                continue
+            player = by_id.get(pid)
+            if player is not None and player.position == 1:
+                continue
+            return False
+        return True
+
+    delayed = [p for p in candidates if not _incoming_starts_this_gw(p)]
+    playable = [p for p in candidates if _incoming_starts_this_gw(p)]
+    if not playable:
+        playable = [p for p in candidates if p.transfers == 0] or candidates[:1]
+
+    by_t = {p.transfers: p for p in playable}
     base_t = min(free_transfers, max(by_t))
-    base = by_t.get(base_t) or candidates[0]
-    best_t = max(candidates, key=lambda p: p.objective)
+    base = by_t.get(base_t) or playable[0]
+    best_t = max(playable, key=lambda p: p.objective)
+    if delayed:
+        sitting_names: list[str] = []
+        for plan in delayed:
+            for pid in plan.in_ids:
+                if pid in plan.starters:
+                    continue
+                player = by_id.get(pid)
+                if player is None or player.position == 1:
+                    continue
+                if player.name not in sitting_names:
+                    sitting_names.append(player.name)
+        if sitting_names:
+            best_t.notes.append(
+                "Delayed "
+                + ", ".join(sitting_names)
+                + ": would sit this GW. Next week's FT can bring them in after results update."
+            )
     if best_t.hit_cost > 0:
         gain3 = best_t.horizon3 - base.horizon3
         if gain3 < best_t.hit_cost + hit_margin:
@@ -354,7 +392,6 @@ def choose_plan(
             best_t = base
 
     week_ids = list(weeks) if weeks else sorted({w for p in players for w in p.mu_by_gw}) or [0]
-    by_id = {p.id: p for p in players}
     wc_budget = sum(by_id[pid].sell_cost for pid in current_ids if pid in by_id) + int(bank)
     ft_keep = free_transfers * ft_future_value
     gw = int(event_id or (week_ids[0] if week_ids else 2))
@@ -388,7 +425,7 @@ def choose_plan(
                 play, why = decide_rebuild_chip(gap, gw, bar=wc_bar, **_rebuild_stop_args(rebuild_stop, "wc"))
                 wc.notes.append(f"Wildcard {why}")
             if gap >= wc_bar and play:
-                candidates.append(wc)
+                best_t = wc
             else:
                 best_t.notes.append(
                     why or f"Wildcard held: rebuild {gap:+.1f} 5GW xP, below +{wc_bar:.1f} bar."
@@ -437,13 +474,14 @@ def choose_plan(
                 play, why = decide_rebuild_chip(gap, gw, bar=fh_bar, **_rebuild_stop_args(rebuild_stop, "fh"))
                 fh.notes.append(f"Free Hit {why}")
             if gap >= fh_bar and play:
-                candidates.append(fh)
+                if fh.objective > best_t.objective:
+                    best_t = fh
             else:
                 best_t.notes.append(
                     why or f"Free Hit held: one-week punt {gap:+.1f} xP, below +{fh_bar:.1f} bar."
                 )
 
-    return max(candidates, key=lambda p: p.objective)
+    return best_t
 
 
 def _rebuild_stop_args(cfg: dict[str, Any], kind: str) -> dict[str, Any]:

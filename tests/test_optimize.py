@@ -210,3 +210,19 @@ def test_free_hit_preferred_for_one_week_punt():
     )
     assert plan.mode == "free_hit"
     assert plan.in_ids
+
+
+def test_do_not_transfer_in_a_player_who_would_sit_this_gw():
+    pool = _pool()
+    initial = solve_squad(pool, lambda_var=0.0, weeks=[1, 2, 3, 4, 5])
+    current = set(initial.owned)
+    outsider = next(p for p in pool if p.id not in current and p.position == 3)
+    for p in pool:
+        p.mu_by_gw = {w: p.mu for w in range(1, 6)}
+        p.mu_h3 = p.mu * 3
+    outsider.mu_by_gw = {1: 0.2, 2: 20.0, 3: 20.0, 4: 20.0, 5: 20.0}
+    outsider.mu = 0.2
+    outsider.mu_h3 = 40.2
+    plan = choose_plan(pool, current_ids=current, **_plan_kwargs())
+    assert outsider.id not in plan.in_ids
+    assert any("Delayed" in n for n in plan.notes)

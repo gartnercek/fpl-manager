@@ -96,7 +96,12 @@ def run_pipeline(cfg: dict[str, Any], *, fetch_summaries: bool = False):
     )
     timezone = str((cfg.get("email") or {}).get("timezone") or "Europe/Ljubljana")
     subject, text, html = render_report(
-        event=event, plan=plan, preds=preds, chips=chips, timezone=timezone
+        event=event,
+        plan=plan,
+        preds=preds,
+        chips=chips,
+        timezone=timezone,
+        team_names=team_names,
     )
     return {
         "client": client,

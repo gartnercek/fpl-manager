@@ -26,8 +26,8 @@ ACTION
 {% for line in actions %}* {{ line }}
 {% endfor %}
 TRANSFERS
-{% if plan.in_ids %}
-{% for a, b in transfers %}Out {{ a }}  ->  In {{ b }}
+{% if transfers %}
+{% for t in transfers %}Out {{ t.out_name }} ({{ t.pos }})  ->  In {{ t.in_name }}
 {% endfor %}
 {% else %}No transfers ({{ plan.mode }}).
 {% endif %}
@@ -61,20 +61,32 @@ HTML_TEMPLATE = Template(
 <p>Deadline: <b>{{ deadline_local }}</b> ({{ hours_left }}h left)</p>
 <h3>Action</h3>
 <ul>{% for line in actions %}<li>{{ line }}</li>{% endfor %}</ul>
+<h3>Transfers</h3>
+{% if transfers %}
+<p>Make these substitutions on FPL (out &rarr; in).{% if plan.hit_cost %} Hit &minus;{{ plan.hit_cost }}.{% endif %}</p>
+<table border="1" cellpadding="4" cellspacing="0">
+<tr><th>Out</th><th>In</th><th>Pos</th><th>Sell</th><th>Buy</th></tr>
+{% for t in transfers %}
+<tr><td>{{ t.out_name }}</td><td><b>{{ t.in_name }}</b></td><td>{{ t.pos }}</td><td>{{ '%.1f'|format(t.out_price) }}m</td><td>{{ '%.1f'|format(t.in_price) }}m</td></tr>
+{% endfor %}
+</table>
+{% else %}
+<p>No transfers ({{ plan.mode }}).</p>
+{% endif %}
 <h3>Starting XI</h3>
 <table border="1" cellpadding="4" cellspacing="0">
-<tr><th></th><th>Player</th><th>xP</th><th>5GW</th><th>sd</th><th>Price</th></tr>
+<tr><th></th><th>Player</th><th>Fixture</th><th>xP</th><th>5GW</th><th>sd</th><th>Price</th></tr>
 {% for p in xi %}
-<tr><td>{{ p.pos }}{{ p.flag }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.1f'|format(p.mu5) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
+<tr><td>{{ p.pos }}{{ p.flag }}</td><td>{{ p.name }}</td><td>{{ p.fixture }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.1f'|format(p.mu5) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
 {% endfor %}
 </table>
 <p>XI xP with captain: {{ '%.2f'|format(plan.xi_mu) }} ± {{ '%.2f'|format(plan.xi_sd) }}</p>
 <h3>Bench (auto-sub order)</h3>
 <p>Put them in this order on the FPL bench. Slot 1 is usually the backup GK; slots 2-4 are outfield auto-sub priority.</p>
 <table border="1" cellpadding="4" cellspacing="0">
-<tr><th>Slot</th><th></th><th>Player</th><th>xP</th><th>5GW</th><th>sd</th><th>Price</th></tr>
+<tr><th>Slot</th><th></th><th>Player</th><th>Fixture</th><th>xP</th><th>5GW</th><th>sd</th><th>Price</th></tr>
 {% for p in bench %}
-<tr><td>{{ p.slot }}</td><td>{{ p.pos }}</td><td>{{ p.name }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.1f'|format(p.mu5) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
+<tr><td>{{ p.slot }}</td><td>{{ p.pos }}</td><td>{{ p.name }}</td><td>{{ p.fixture }}</td><td>{{ '%.2f'|format(p.mu) }}</td><td>{{ '%.1f'|format(p.mu5) }}</td><td>{{ '%.2f'|format(p.sd) }}</td><td>{{ '%.1f'|format(p.price) }}</td></tr>
 {% endfor %}
 </table>
 <h3>Chips</h3>
@@ -97,6 +109,56 @@ def _flag(plan: Plan, pid: int) -> str:
     return ""
 
 
+def pair_transfers(out_ids: list[int], in_ids: list[int], by_id: dict[int, PlayerPrediction]) -> list[dict]:
+    """Pair each outgoing player with a same-position incoming player."""
+    remaining = list(in_ids)
+    pairs: list[dict] = []
+    for oid in sorted(out_ids, key=lambda i: (by_id[i].position, -by_id[i].now_cost, by_id[i].web_name)):
+        pos = by_id[oid].position
+        same = [i for i in remaining if by_id[i].position == pos]
+        pick = (same or remaining)[0] if (same or remaining) else None
+        if pick is not None:
+            remaining.remove(pick)
+        pairs.append(
+            {
+                "out_name": by_id[oid].web_name,
+                "in_name": by_id[pick].web_name if pick is not None else "—",
+                "pos": POS[pos],
+                "out_price": by_id[oid].now_cost / 10,
+                "in_price": (by_id[pick].now_cost / 10) if pick is not None else 0.0,
+            }
+        )
+    for iid in remaining:
+        p = by_id[iid]
+        pairs.append(
+            {
+                "out_name": "—",
+                "in_name": p.web_name,
+                "pos": POS[p.position],
+                "out_price": 0.0,
+                "in_price": p.now_cost / 10,
+            }
+        )
+    return pairs
+
+
+def fixture_label(pred: PlayerPrediction, team_names: dict[int, str] | None) -> str:
+    names = team_names or {}
+    bits = []
+    for fx in pred.fixtures:
+        ha = "H" if fx.is_home else "A"
+        opp = names.get(fx.opponent, str(fx.opponent))
+        bits.append(f"{ha} vs {opp} (FDR {fx.difficulty})")
+    return ", ".join(bits) or "BLANK"
+
+
+def _player_label(p: PlayerPrediction) -> str:
+    if not p.roles:
+        return p.web_name
+    roles = "/".join(p.roles)
+    return f"{p.web_name} [{roles}]"
+
+
 def render_report(
     *,
     event: dict,
@@ -104,6 +166,7 @@ def render_report(
     preds: list[PlayerPrediction],
     chips: ChipAdvice,
     timezone: str,
+    team_names: dict[int, str] | None = None,
 ) -> tuple[str, str, str]:
     tz = ZoneInfo(timezone)
     deadline = deadline_utc(event).astimezone(tz)
@@ -111,8 +174,10 @@ def render_report(
     hours_left = max(int((deadline - now).total_seconds() // 3600), 0)
     by_id = {p.player_id: p for p in preds}
     cap = by_id[plan.captain]
+    transfers = pair_transfers(plan.out_ids, plan.in_ids, by_id)
+    cap_fx = fixture_label(cap, team_names)
     actions = [
-        f"Captain {cap.web_name} (vice {by_id[plan.vice].web_name})",
+        f"Captain {cap.web_name} (vice {by_id[plan.vice].web_name}) — {cap_fx}",
         f"XI xP {plan.xi_mu:.1f}  cost {plan.cost / 10:.1f}m  bank {plan.bank / 10:.1f}m",
         chips.triple_captain.reason.split(":")[0],
         chips.bench_boost.reason.split(":")[0],
@@ -123,8 +188,10 @@ def render_report(
         actions.insert(0, f"PLAY WILDCARD ({plan.transfers} free changes)")
     elif plan.mode == "free_hit":
         actions.insert(0, f"PLAY FREE HIT ({plan.transfers} free changes; squad reverts after this GW)")
-    elif plan.in_ids:
-        actions.insert(0, f"Transfers ({plan.transfers}, hit -{plan.hit_cost}): {plan.out_ids} -> {plan.in_ids}")
+    elif transfers:
+        swaps = ", ".join(f"{t['out_name']} -> {t['in_name']}" for t in transfers)
+        hit = f", hit -{plan.hit_cost}" if plan.hit_cost else ""
+        actions.insert(0, f"Transfers ({plan.transfers}{hit}): {swaps}")
     else:
         actions.insert(0, "No transfers required" if plan.mode != "initial" else "Set this 15 before the GW1 deadline")
 
@@ -138,14 +205,14 @@ def render_report(
     for pid in sorted(plan.starters, key=lambda i: (by_id[i].position, -by_id[i].mu)):
         p = by_id[pid]
         flag = _flag(plan, pid)
-        label = p.web_name
-        if p.roles:
-            label = f"{label} [{'/'.join(p.roles)}]"
+        label = _player_label(p)
+        fx = fixture_label(p, team_names)
         xi.append(
             {
                 "pos": POS[p.position],
                 "flag": flag,
                 "name": label,
+                "fixture": fx,
                 "mu": p.mu,
                 "sd": p.sd,
                 "price": p.now_cost / 10,
@@ -153,21 +220,21 @@ def render_report(
             }
         )
         xi_rows.append(
-            f"  {POS[p.position]}{flag:4} {label:<22} {p.mu:5.2f}  5GW {p.mu_horizon.get(5, p.mu):5.1f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
+            f"  {POS[p.position]}{flag:4} {label:<22} {fx:<22} {p.mu:5.2f}  5GW {p.mu_horizon.get(5, p.mu):5.1f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
         )
 
     bench = []
     bench_rows = []
     for slot, pid in enumerate(plan.bench, start=1):
         p = by_id[pid]
-        blabel = p.web_name
-        if p.roles:
-            blabel = f"{blabel} [{'/'.join(p.roles)}]"
+        blabel = _player_label(p)
+        fx = fixture_label(p, team_names)
         bench.append(
             {
                 "slot": slot,
                 "pos": POS[p.position],
                 "name": blabel,
+                "fixture": fx,
                 "mu": p.mu,
                 "sd": p.sd,
                 "price": p.now_cost / 10,
@@ -175,19 +242,22 @@ def render_report(
             }
         )
         bench_rows.append(
-            f"  {slot} {POS[p.position]:<3} {blabel:<22} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
+            f"  {slot} {POS[p.position]:<3} {blabel:<22} {fx:<22} {p.mu:5.2f} +/- {p.sd:4.2f}  {p.now_cost / 10:4.1f}m"
         )
     bench_names = ", ".join(f"{b['slot']}. {b['name']}" for b in bench)
     if bench_names:
         actions.append(f"Bench order: {bench_names}")
     for note in plan.notes:
-        if "Wildcard" in note or "Free Hit" in note or "wildcard" in note or "free hit" in note:
-            if note not in actions:
-                actions.append(note)
+        interesting = (
+            "Wildcard" in note
+            or "Free Hit" in note
+            or "wildcard" in note
+            or "free hit" in note
+            or note.startswith("Delayed")
+        )
+        if interesting and note not in actions:
+            actions.append(note)
 
-    out_sorted = sorted(plan.out_ids, key=lambda i: (by_id[i].position, -by_id[i].now_cost))
-    in_sorted = sorted(plan.in_ids, key=lambda i: (by_id[i].position, -by_id[i].now_cost))
-    transfers = list(zip([by_id[i].web_name for i in out_sorted], [by_id[i].web_name for i in in_sorted]))
     risk_notes = []
     for pid in plan.starters:
         p = by_id[pid]

@@ -151,6 +151,28 @@ def test_summer_signing_has_lower_start_probability_than_stayer():
     assert b.p_start < a.p_start - 0.08
 
 
+def test_eighty_minute_start_counts_as_a_start():
+    player = _player(
+        minutes=80,
+        starts=1,
+        now_cost=55,
+        selected_by_percent="40.0",
+        team_join_date="2024-07-01",
+        expected_goals_per_90=0.05,
+    )
+    est = estimate_minutes(player, None, _cfg())
+    assert est.p_start > 0.85
+
+
+def test_one_game_clean_sheet_does_not_set_team_xgc():
+    players = [
+        _player(element_type=1, team=1, minutes=90, starts=1, expected_goals_conceded_per_90=0.2, web_name="GK")
+    ]
+    rates = team_xgc90(players)
+    assert rates[1] > 1.0
+    assert rates[1] < 1.35
+
+
 def test_team_xgc_from_goalkeepers():
     players = [
         _player(element_type=1, team=1, minutes=3420, expected_goals_conceded_per_90=0.8, web_name="GK"),

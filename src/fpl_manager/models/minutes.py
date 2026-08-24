@@ -106,7 +106,7 @@ def _price_prior(player: dict[str, Any], cfg: dict[str, Any]) -> MinutesEstimate
 def _from_season_totals(player: dict[str, Any]) -> MinutesEstimate:
     minutes = _f(player.get("minutes"))
     starts = _f(player.get("starts"))
-    if minutes < 90:
+    if minutes <= 0:
         return MinutesEstimate.zero()
     games = min(max(starts, minutes / 90.0, 1.0), 38.0)
     p_start = float(np.clip(starts / games, 0.0, 0.98))

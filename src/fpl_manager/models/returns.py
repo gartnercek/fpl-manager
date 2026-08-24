@@ -166,6 +166,10 @@ def team_xgc90(players: list[dict[str, Any]]) -> dict[int, float]:
         if rate <= 0:
             gc = _f(p.get("goals_conceded"))
             rate = gc / (minutes / 90.0) if minutes else LEAGUE_AVG_GOALS
+        n90 = minutes / 90.0
+        # One GW of a clean sheet must not become "this team never concedes".
+        if n90 < 10:
+            rate = shrink_rate(rate, n90, LEAGUE_AVG_GOALS, prior_strength=12.0)
         acc.setdefault(int(p["team"]), []).append((minutes, rate))
     out: dict[int, float] = {}
     for team_id, rows in acc.items():
