@@ -1,5 +1,5 @@
 {
   "last_emailed_gw": 2,
-  "last_fingerprint": "{\"bb\": false, \"c\": 388, \"in\": [237, 472], \"mode\": \"transfers\", \"out\": [161, 387], \"tc\": false, \"v\": 368, \"xi\": [1, 4, 165, 237, 346, 368, 388, 423, 426, 427, 472]}",
+  "last_fingerprint": "{\"bb\": false, \"c\": 368, \"in\": [237], \"mode\": \"transfers\", \"out\": [399], \"tc\": false, \"v\": 426, \"xi\": [1, 4, 8, 165, 223, 237, 368, 387, 388, 426, 427]}",
   "free_transfers": 1
 }
