@@ -9,4 +9,5 @@ def test_config_loads():
     cfg = load_config()
     assert "lambda_var" in cfg
     assert cfg["horizon_gws"] == 5
+    assert cfg["markets"]["enabled"] is True
     assert Path("config.yaml").exists() or True

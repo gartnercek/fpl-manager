@@ -50,7 +50,7 @@ APPENDIX - top 8 by position (next GW xP)
 {% for line in appendix %}{{ line }}
 {% endfor %}
 Approximations: variance components independent; bonus = 0.3*(G+A); sell prices from public history;
-team strength from FPL ratings; FT future value is a constant.
+team strength from FPL ratings; FT future value is a constant; CS/goals blend Polymarket team-total U0.5 when liquid.
 """
 )
 
@@ -96,6 +96,7 @@ HTML_TEMPLATE = Template(
 {% if chips.free_hit_note %}<p>{{ chips.free_hit_note }}</p>{% endif %}
 <h3>Risk</h3>
 <ul>{% for note in risk_notes %}<li>{{ note }}</li>{% endfor %}</ul>
+<p style="color:#555;font-size:90%">Clean sheets and team goals blend Polymarket regular-time team-total Under 0.5 with FPL xGC when the book is liquid. Thin books are ignored.</p>
 </body></html>
 """
 )

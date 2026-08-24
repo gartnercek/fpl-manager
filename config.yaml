@@ -75,3 +75,11 @@ schedule:
   delta_within_hours: 24
 
 fetch_element_summaries: false
+
+# Polymarket EPL team totals (O/U 0.5) -> P(team scores 0) = opponent CS.
+# Public Gamma API; no trading key. Thin books are shrunk toward FPL lambda.
+markets:
+  enabled: true
+  blend: 0.7
+  min_liquidity: 80
+  full_liquidity: 800

@@ -187,3 +187,5 @@ def test_render_report_action_uses_names_not_ids():
     assert "Make these substitutions" in html
     assert "H vs IPS (FDR 2)" in html
     assert "Captain Guehi" in text
+    assert "Polymarket" in html
+    assert "Polymarket" in text

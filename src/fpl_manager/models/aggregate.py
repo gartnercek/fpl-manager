@@ -8,10 +8,18 @@ import pandas as pd
 
 from fpl_manager.config import ROOT
 from fpl_manager.fixtures import Matchup
+from fpl_manager.markets import (
+    blend_lambda,
+    fetch_team_totals,
+    lambda_from_p_blank,
+    lookup_blanks,
+    map_fpl_teams,
+    market_weight,
+)
 from fpl_manager.models.minutes import MinutesEstimate, estimate_minutes, is_summer_signing
 from fpl_manager.models.returns import PositionPriors, build_priors, mean_overall, shrink_rate, team_xgc90
 from fpl_manager.models.setpieces import setpiece_rates
-from fpl_manager.models.simulate import simulate_match
+from fpl_manager.models.simulate import FixtureScores, fixture_home_away, scored_lambda, simulate_match
 
 POSITION_NAME = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
 
@@ -98,6 +106,8 @@ def predict_player(
     mean_r: float,
     cfg: dict[str, Any],
     rng: np.random.Generator | None = None,
+    scores: FixtureScores | None = None,
+    fixture_lams: dict[tuple[int, int, int], tuple[float, float]] | None = None,
 ) -> PlayerPrediction:
     pos = int(player["element_type"])
     minutes_played = _f(player.get("minutes"))
@@ -133,6 +143,10 @@ def predict_player(
         gw_mu = 0.0
         gw_var = 0.0
         for matchup in matchups:
+            home_id, away_id = fixture_home_away(int(player["team"]), matchup)
+            lams = (fixture_lams or {}).get((matchup.event, home_id, away_id))
+            lam_home = lams[0] if lams else None
+            lam_away = lams[1] if lams else None
             mu, var, p_cs = simulate_match(
                 player,
                 mins,
@@ -147,6 +161,9 @@ def predict_player(
                 rng,
                 draws,
                 pieces,
+                scores=scores,
+                lam_home=lam_home,
+                lam_away=lam_away,
             )
             gw_mu += mu
             gw_var += var
@@ -192,6 +209,91 @@ def predict_player(
     )
 
 
+def _unique_fixtures(
+    fixtures_by_team: dict[int, dict[int, list[Matchup]]],
+    events: list[int],
+) -> dict[tuple[int, int, int], Matchup]:
+    unique: dict[tuple[int, int, int], Matchup] = {}
+    for team_id, by_event in fixtures_by_team.items():
+        for event, matchups in by_event.items():
+            if event not in events:
+                continue
+            for matchup in matchups:
+                key = (event, *fixture_home_away(team_id, matchup))
+                unique.setdefault(key, matchup)
+    return unique
+
+
+def build_fixture_lambdas(
+    teams: dict[int, dict[str, Any]],
+    team_xgc: dict[int, float],
+    mean_r: float,
+    fixtures_by_team: dict[int, dict[int, list[Matchup]]],
+    events: list[int],
+    bootstrap_teams: list[dict[str, Any]],
+    cfg: dict[str, Any],
+) -> dict[tuple[int, int, int], tuple[float, float]]:
+    mkt_cfg = cfg.get("markets") or {}
+    blend = float(mkt_cfg.get("blend", 0.7))
+    min_liq = float(mkt_cfg.get("min_liquidity", 80.0))
+    full_liq = float(mkt_cfg.get("full_liquidity", 800.0))
+    totals = []
+    if mkt_cfg.get("enabled", True):
+        try:
+            totals = fetch_team_totals()
+        except Exception as exc:
+            print(f"Polymarket fetch failed ({exc.__class__.__name__}); using FPL lambdas")
+            totals = []
+    names = map_fpl_teams(bootstrap_teams)
+    out: dict[tuple[int, int, int], tuple[float, float]] = {}
+    n_sides = 0
+    n_blend = 0
+    n_thin = 0
+    for (event, home_id, away_id), matchup in _unique_fixtures(fixtures_by_team, events).items():
+        lam_h = scored_lambda(
+            home_id,
+            away_id,
+            scoring_is_home=True,
+            event=event,
+            teams=teams,
+            team_xgc=team_xgc,
+            mean_r=mean_r,
+            kickoff=matchup.kickoff,
+        )
+        lam_a = scored_lambda(
+            away_id,
+            home_id,
+            scoring_is_home=False,
+            event=event,
+            teams=teams,
+            team_xgc=team_xgc,
+            mean_r=mean_r,
+            kickoff=matchup.kickoff,
+        )
+        home_row, away_row = lookup_blanks(totals, home_id, away_id, matchup.kickoff, names)
+        for row, is_home in ((home_row, True), (away_row, False)):
+            n_sides += 1
+            if row is None:
+                continue
+            w = market_weight(row.liquidity, blend=blend, min_liquidity=min_liq, full_liquidity=full_liq)
+            if w <= 0:
+                n_thin += 1
+                continue
+            n_blend += 1
+            market_lam = lambda_from_p_blank(row.p_blank)
+            if is_home:
+                lam_h = blend_lambda(lam_h, market_lam, w)
+            else:
+                lam_a = blend_lambda(lam_a, market_lam, w)
+        out[(event, home_id, away_id)] = (lam_h, lam_a)
+    if mkt_cfg.get("enabled", True):
+        print(
+            f"Polymarket team totals: {n_blend}/{n_sides} sides blended "
+            f"({len(totals)} listed, {n_thin} thin)"
+        )
+    return out
+
+
 def predict_all(
     bootstrap: dict[str, Any],
     fixtures_by_team: dict[int, dict[int, list[Matchup]]],
@@ -206,6 +308,10 @@ def predict_all(
     mean_r = mean_overall(teams)
     histories = histories or {}
     rng = np.random.default_rng(2026)
+    scores = FixtureScores()
+    fixture_lams = build_fixture_lambdas(
+        teams, xgc, mean_r, fixtures_by_team, events, list(bootstrap["teams"]), cfg
+    )
     preds: list[PlayerPrediction] = []
     for player in players:
         if player.get("removed"):
@@ -223,6 +329,8 @@ def predict_all(
                 mean_r,
                 cfg,
                 rng,
+                scores=scores,
+                fixture_lams=fixture_lams,
             )
         )
     preds.sort(key=lambda p: (p.mu_horizon.get(len(events), p.mu), p.mu), reverse=True)
