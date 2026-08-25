@@ -1,0 +1,5 @@
+# Static Cloudflare Pages site. HTML lives in site/, Functions in functions/.
+# pages_build_output_dir stops Wrangler guessing Hugo + public/.
+name = "fpl-manager"
+compatibility_date = "2025-08-15"
+pages_build_output_dir = "site"

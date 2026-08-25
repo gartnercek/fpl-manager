@@ -1,0 +1,4 @@
+Contact: mailto:support@fpl-manager.com
+Expires: 2027-08-25T00:00:00.000Z
+Canonical: https://fpl-manager.com/.well-known/security.txt
+Preferred-Languages: en

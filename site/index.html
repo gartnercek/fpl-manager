@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FPL Manager — FPL team planner &amp; weekly squad letter</title>
+  <meta name="description" content="FPL Manager is an unofficial FPL team planner. Each week you get transfers, a starting XI, captain, and chip advice by email. You copy the moves on the official site.">
+  <meta name="keywords" content="FPL manager, FPL team planner, FPL team builder, FPL planner, Fantasy Premier League, FPL transfers, FPL captain">
+  <link rel="canonical" href="https://fpl-manager.com/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="favicon.svg">
+  <meta name="theme-color" content="#37003C">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="FPL Manager">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:url" content="https://fpl-manager.com/">
+  <meta property="og:title" content="FPL Manager — FPL team planner">
+  <meta property="og:description" content="Weekly FPL team builder: transfers, XI, captain, and chips, emailed before the deadline. Unofficial.">
+  <meta property="og:image" content="https://fpl-manager.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FPL Manager — FPL team planner">
+  <meta name="twitter:description" content="Weekly FPL transfers, XI, captain, and chips. You still click them in.">
+  <meta name="twitter:image" content="https://fpl-manager.com/og.png">
+  <link rel="preconnect" href="https://fonts.bunny.net">
+  <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css?v=com1">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://fpl-manager.com/#org",
+        "name": "FPL Manager",
+        "url": "https://fpl-manager.com/",
+        "email": "support@fpl-manager.com",
+        "logo": "https://fpl-manager.com/favicon.svg",
+        "description": "Unofficial Fantasy Premier League team planner. Weekly emailed squad advice."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://fpl-manager.com/#site",
+        "url": "https://fpl-manager.com/",
+        "name": "FPL Manager",
+        "inLanguage": "en-GB",
+        "publisher": { "@id": "https://fpl-manager.com/#org" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "FPL Manager",
+        "applicationCategory": "SportsApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "EUR",
+          "lowPrice": "19",
+          "highPrice": "79",
+          "url": "https://fpl-manager.com/subscribe.html"
+        },
+        "description": "Automated FPL team planner that emails a weekly squad letter: transfers, starting XI, captain, and chips."
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is this an FPL AI team creator?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "FPL Manager is an automated FPL team planner, not a chatbot. It estimates expected points with a match simulation, then a mixed-integer programme builds the fifteen, XI, captain, and chip call. Nothing is submitted to FPL for you."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is this an FPL team builder?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Each letter names this week’s transfers, starting XI, bench order, captain, and vice for your public FPL squad. You copy the moves on the official Fantasy Premier League site."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What does the FPL planner actually decide?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A five-gameweek plan with this deadline’s clicks spelled out: who to sell and buy, whether a hit pays, who starts, who wears the armband, and whether to play a chip this gameweek."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I give you my FPL password?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Checkout is on Stripe. The letter uses only your public FPL team ID. You still make every click on the official site."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><g fill="#00ff87"><rect x="13" y="3" width="2.2" height="2.2"/><rect x="17" y="3" width="2.2" height="2.2"/><rect x="5" y="10" width="2.2" height="2.2"/><rect x="10" y="10" width="2.2" height="2.2"/><rect x="15" y="10" width="2.2" height="2.2"/><rect x="20" y="10" width="2.2" height="2.2"/><rect x="25" y="10" width="2.2" height="2.2"/><rect x="5" y="17" width="2.2" height="2.2"/><rect x="10" y="17" width="2.2" height="2.2"/><rect x="15" y="17" width="2.2" height="2.2"/><rect x="20" y="17" width="2.2" height="2.2"/><rect x="25" y="17" width="2.2" height="2.2"/><rect x="10" y="24" width="2.2" height="2.2"/><rect x="15" y="24" width="2.2" height="2.2"/><rect x="20" y="24" width="2.2" height="2.2"/></g></svg>
+        <span><span class="brand-name">FPL Manager</span><span class="brand-tag">Deadline letter</span></span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="/" aria-current="page">Home</a>
+        <a href="method.html">How it chooses</a>
+        <a href="subscribe.html">Subscribe</a>
+        <a href="legal.html">Legal</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap masthead">
+      <p class="kicker">Season 2026/27 · unofficial FPL team planner</p>
+      <h1>The FPL team builder that writes your deadline letter.</h1>
+      <p class="lede">One email a week: who to sell, who to buy, who starts, who wears the armband, and whether a chip is worth playing this gameweek. You still make the clicks.</p>
+      <div class="cta-row">
+        <a class="btn" href="subscribe.html">Subscribe</a>
+        <a href="method.html">How the planner chooses →</a>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="wrap section-split">
+        <p class="section-num">01 / What arrives</p>
+        <div class="prose">
+          <p>FPL Manager looks at the public Fantasy Premier League page for <em>your</em> squad, then solves the same problem the game poses: fifteen players, £100m, three from a club, eleven to pick, one captain. It never logs in.</p>
+          <ol class="plain">
+            <li>Transfers for this deadline — including whether a −4 hit pays over three gameweeks.</li>
+            <li>Starting XI, bench order, captain and vice. The armband goes to the starter with the highest expected points this gameweek.</li>
+            <li>Hold or play Triple Captain, Bench Boost, Wildcard, Free Hit — with the numbers behind the call.</li>
+            <li>Risk notes for anyone starting with a shaky chance of minutes.</li>
+          </ol>
+          <p class="small">The fifteen that come out of this week’s transfers stay locked for the next five gameweeks in the model.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap section-split">
+        <p class="section-num">02 / A real letter</p>
+        <div>
+          <p class="prose">Gameweek 2, 2026/27. Same engine that writes to a subscriber. Formation 4-4-2, one free transfer. Leftover bank is ignored by the objective — it is worth nothing until you spend it.</p>
+          <div class="letter" aria-label="Sample weekly FPL letter">
+            <div class="letter-meta">
+              <span>GW2 · Fri 28 Aug 19:30 CEST</span>
+              <span>T = 1 · hit = 0</span>
+            </div>
+            <h3>Cherki → Ndiaye. Fernandes (C).</h3>
+            <p>Cherki’s last outing was a 27-minute cameo. The solver will not pay five-week minutes on that. Ndiaye is modelled as a 90-minute start. Bench: Woodman, Shaw, Mateta, Lavia. Wharton delayed — he would sit this week.</p>
+            <table>
+              <thead>
+                <tr><th></th><th>XI</th><th>Fixture</th><th class="right">xP</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="pos">GKP</td><td>Raya</td><td>A vs AVL</td><td class="num right">3.78</td></tr>
+                <tr><td class="pos">DEF</td><td>Guéhi</td><td>A vs CRY</td><td class="num right">4.57</td></tr>
+                <tr><td class="pos">DEF</td><td>Gabriel</td><td>A vs AVL</td><td class="num right">3.88</td></tr>
+                <tr><td class="pos">MID (C)</td><td>B.Fernandes</td><td>H vs IPS</td><td class="num right">5.10</td></tr>
+                <tr><td class="pos">MID (V)</td><td>Szoboszlai</td><td>H vs NFO</td><td class="num right">4.77</td></tr>
+                <tr><td class="pos">FWD</td><td>João Pedro</td><td>H vs BHA</td><td class="num right">3.09</td></tr>
+              </tbody>
+            </table>
+            <p class="small" style="margin:0.8rem 0 0">XI with captain 47.1 ± 11.7. HOLD triple captain (5.10 now vs ~11.9 expected later). HOLD bench boost.</p>
+          </div>
+          <p class="small">Figures from a dry-run of the live planner. Next week’s letter will differ.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap section-split">
+        <p class="section-num">03 / How it chooses</p>
+        <div class="prose">
+          <p>Player points are a Monte Carlo: minutes, Poisson returns, and one shared scoreline per fixture. Clean sheets come from that scoreline. If your team draws a blank, that player cannot be given a goal or an assist in the same world.</p>
+          <p>Where the book is liquid, team goal expectancy is blended toward public regular-time Over/Under 0.5 prices. Thin books are ignored.</p>
+          <p>The fifteen and the eleven are a mixed-integer programme: maximise five-week expected starter points, minus a small penalty on variance, subject to FPL’s rules. <a href="method.html">The full write-up is here</a> — objective, hit rule, and chip stopping condition.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap section-split">
+        <p class="section-num">04 / Price</p>
+        <div>
+          <div class="price-grid">
+            <article class="price-card preferred">
+              <p class="pill">Better value</p>
+              <h3>Season</h3>
+              <p class="price-amt" id="price-season">€79 <span>/ 2026/27</span></p>
+              <p>Every deadline letter until GW38. One payment on Stripe. No auto-renew into next season.</p>
+            </article>
+            <article class="price-card">
+              <h3>Monthly</h3>
+              <p class="price-amt" id="price-month">€19 <span>/ month</span></p>
+              <p>If you only want a stretch of the season. Cancel any time from the Stripe customer portal.</p>
+            </article>
+          </div>
+          <p class="prose">Pay by card on Stripe. No FPL password. First intake is a small paid list.</p>
+          <p><a class="btn" href="subscribe.html">Subscribe with your team ID</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="wrap section-split">
+        <p class="section-num">05 / Common searches</p>
+        <div class="faq">
+          <details open>
+            <summary>Is this an FPL AI team creator?</summary>
+            <p>It is an automated FPL team planner, not a chat model. Expected points come from a match simulation; a mixed-integer programme then builds the squad. There is no prompt box, and nothing is posted to FPL for you.</p>
+          </details>
+          <details>
+            <summary>Is this an FPL team builder?</summary>
+            <p>Yes. Each letter names this week’s transfers, starting XI, bench, captain, and vice for your public squad. You copy the moves on fantasy.premierleague.com.</p>
+          </details>
+          <details>
+            <summary>What kind of FPL planner is this?</summary>
+            <p>A five-gameweek plan with this deadline’s clicks spelled out: hits, unused free transfers, chips, and a starting eleven. Unused bank is worth zero in the objective until you spend it.</p>
+          </details>
+          <details>
+            <summary>Do I hand over my FPL login?</summary>
+            <p>Never. Stripe takes the card. The mailer reads the same public team page anyone can open with your team ID.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap section-split">
+        <p class="section-num">06 / Limits</p>
+        <div>
+          <ul class="plain not-this">
+            <li>You copy the moves on the official site.</li>
+            <li>Unofficial. No Premier League affiliation.</li>
+            <li>Price changes are left to FPL.</li>
+            <li>Public picks can lag a squad you changed mid-week, until the next deadline publishes them.</li>
+            <li>Clean-sheet points already sit in each defender’s mean. The planner does not add a covariance bonus for stacking a back line.</li>
+            <li>Haaland can still blank. The letter is advice.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div>
+        <p class="colophon">fpl-manager.com · unofficial Fantasy Premier League advice</p>
+        <p><a href="subscribe.html">Subscribe</a> · <a href="method.html">Method</a> · <a href="legal.html">Privacy &amp; terms</a></p>
+      </div>
+      <p><a href="mailto:support@fpl-manager.com">support@fpl-manager.com</a></p>
+    </div>
+  </footer>
+  <script src="js/config.js?v=com1"></script>
+  <script src="js/site.js?v=com1"></script>
+</body>
+</html>

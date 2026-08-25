@@ -1,0 +1,8 @@
+{
+  "name": "fpl-manager-web",
+  "private": true,
+  "description": "Static Cloudflare Pages site. Publish site/, do not run Hugo.",
+  "scripts": {
+    "build": "node -e \"process.stdout.write('static site already in site/\\n')\""
+  }
+}

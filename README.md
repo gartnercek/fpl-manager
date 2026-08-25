@@ -45,6 +45,10 @@ Paste that number into `config.yaml` as `team_id`. You can also set GitHub varia
 (same number). Until it is set, the program still builds a 100.0m GW1 squad; it just cannot
 diff against *your* current 15.
 
+## Public site
+
+Marketing pages live in `site/` and are meant to ship at [fpl-manager.com](https://fpl-manager.com). Card checkout is a Cloudflare Pages Function (`/api/checkout`) plus Stripe. The weekly GitHub Action reads who paid and emails each team. See `site/README.md` for DNS, Search Console, and the Stripe checklist.
+
 ## Where email details go
 
 Do **not** put your Gmail password in `config.yaml` or commit it. GitHub Actions reads secrets.
@@ -66,8 +70,11 @@ Do **not** put your Gmail password in `config.yaml` or commit it. GitHub Actions
 4. **Settings** → **Secrets and variables** → **Actions** → **Variables** tab →
    `FPL_TEAM_ID` = your team ID from above.
 
-Then: **Actions** → **fpl-weekly** → **Run workflow** → tick **force** → Run. That sends one
-email immediately. The daily 09:00 UTC cron only emails when a deadline is within 60 hours.
+Then: **Actions** → **fpl-weekly** → **Run workflow** → tick **force** → Run. That sends mail
+immediately. The daily 09:00 UTC cron only emails when a deadline is within 60 hours.
+
+Paid subscribers are picked up from Stripe when `STRIPE_SECRET_KEY` is set (see `site/README.md`).
+`EMAIL_TO` still receives the operator letter for `FPL_TEAM_ID`.
 
 ## Known approximations
 

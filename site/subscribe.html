@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Subscribe — FPL Manager team planner</title>
+  <meta name="description" content="Subscribe to the FPL Manager weekly letter. Send your public FPL team ID and pay on Stripe. No FPL password.">
+  <link rel="canonical" href="https://fpl-manager.com/subscribe.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#37003C">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fpl-manager.com/subscribe.html">
+  <meta property="og:title" content="Subscribe — FPL Manager">
+  <meta property="og:description" content="Pay on Stripe. Weekly FPL transfers, XI, captain, and chips by email.">
+  <meta property="og:image" content="https://fpl-manager.com/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.bunny.net">
+  <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css?v=com1">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "FPL Manager weekly letter",
+    "description": "Unofficial Fantasy Premier League team planner. Weekly emailed transfers, XI, captain, and chips.",
+    "brand": { "@type": "Brand", "name": "FPL Manager" },
+    "url": "https://fpl-manager.com/subscribe.html",
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Season 2026/27",
+        "price": "79.00",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/LimitedAvailability",
+        "url": "https://fpl-manager.com/subscribe.html"
+      },
+      {
+        "@type": "Offer",
+        "name": "Monthly",
+        "price": "19.00",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/LimitedAvailability",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "19.00",
+          "priceCurrency": "EUR",
+          "billingDuration": "P1M"
+        },
+        "url": "https://fpl-manager.com/subscribe.html"
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><g fill="#00ff87"><rect x="13" y="3" width="2.2" height="2.2"/><rect x="17" y="3" width="2.2" height="2.2"/><rect x="5" y="10" width="2.2" height="2.2"/><rect x="10" y="10" width="2.2" height="2.2"/><rect x="15" y="10" width="2.2" height="2.2"/><rect x="20" y="10" width="2.2" height="2.2"/><rect x="25" y="10" width="2.2" height="2.2"/><rect x="5" y="17" width="2.2" height="2.2"/><rect x="10" y="17" width="2.2" height="2.2"/><rect x="15" y="17" width="2.2" height="2.2"/><rect x="20" y="17" width="2.2" height="2.2"/><rect x="25" y="17" width="2.2" height="2.2"/><rect x="10" y="24" width="2.2" height="2.2"/><rect x="15" y="24" width="2.2" height="2.2"/><rect x="20" y="24" width="2.2" height="2.2"/></g></svg>
+        <span><span class="brand-name">FPL Manager</span><span class="brand-tag">Deadline letter</span></span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="method.html">How it chooses</a>
+        <a href="subscribe.html" aria-current="page">Subscribe</a>
+        <a href="legal.html">Legal</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap masthead">
+      <p class="kicker">First intake · paid beta</p>
+      <h1>The number after <span class="num">/entry/</span>.</h1>
+      <p class="lede">That ID is unique for the season. You pay by card on Stripe. There is no FPL login, and nothing is submitted on your behalf.</p>
+    </div>
+
+    <section class="section">
+      <div class="wrap section-split">
+        <p class="section-num">Find it</p>
+        <div class="prose">
+          <p>On fantasy.premierleague.com in a browser, open Points and look at the address bar:</p>
+          <p class="id-demo">https://fantasy.premierleague.com/entry/<em>1234567</em>/event/2</p>
+          <p>The highlighted digits are the ID. You need a squad entered for this season; the ID is reissued every year. You can paste that whole URL into the form. It will keep only the number.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <form id="subscribe-form" class="form-narrow" method="POST" action="#">
+          <input type="hidden" name="_subject" value="FPL Manager subscribe">
+          <p class="hp" aria-hidden="true">
+            <label for="company">Company</label>
+            <input id="company" type="text" name="_gotcha" tabindex="-1" autocomplete="off">
+          </p>
+          <label for="name">Name (optional)</label>
+          <input id="name" name="name" type="text" autocomplete="name">
+
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" required>
+          <span class="hint">Where the weekly letter goes.</span>
+
+          <label for="team-id">FPL team ID</label>
+          <input id="team-id" name="team_id" type="text" inputmode="numeric" autocomplete="off" required placeholder="1234567 or paste the entry URL">
+          <span class="hint">Public data only. Same ID anyone can see on a mini-league page.</span>
+
+          <p style="margin:1.1rem 0 0.3rem">Plan</p>
+          <label class="check" style="margin-top:0.3rem">
+            <input type="radio" name="plan" value="season" checked>
+            <span id="plan-season-label">Season 2026/27 — €79</span>
+          </label>
+          <label class="check">
+            <input type="radio" name="plan" value="monthly">
+            <span id="plan-month-label">Monthly — €19</span>
+          </label>
+
+          <label for="note">Anything the solver should know (optional)</label>
+          <textarea id="note" name="note" maxlength="500" placeholder="e.g. I never captain a City player on a whim — ignore this, the model will anyway."></textarea>
+
+          <label class="check">
+            <input id="consent" name="consent" type="checkbox" required>
+            <span>Create a Stripe checkout and keep my email and team ID to send the weekly letter. See <a href="legal.html">privacy</a>.</span>
+          </label>
+          <label class="check">
+            <input id="unofficial" name="unofficial" type="checkbox" required>
+            <span>I understand this is unofficial advice. I will make the clicks on FPL myself.</span>
+          </label>
+
+          <p style="margin-top:1.2rem">
+            <button class="btn" type="submit">Continue to payment</button>
+          </p>
+          <p id="form-status" class="alert" role="status"></p>
+          <p class="small">Card details are entered on Stripe. Do not paste an FPL password.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p><a href="method.html">How it chooses</a> · <a href="legal.html">Legal</a></p>
+      <p>Unofficial Fantasy Premier League advice.</p>
+    </div>
+  </footer>
+  <script src="js/config.js?v=com1"></script>
+  <script src="js/site.js?v=com1"></script>
+</body>
+</html>

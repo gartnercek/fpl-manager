@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How the FPL planner chooses — FPL Manager</title>
+  <meta name="description" content="How FPL Manager builds a weekly FPL team: minutes, match simulation, and the five-week mixed-integer programme behind transfers, XI, captain, and chips.">
+  <link rel="canonical" href="https://fpl-manager.com/method.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#37003C">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://fpl-manager.com/method.html">
+  <meta property="og:title" content="How the FPL planner chooses — FPL Manager">
+  <meta property="og:description" content="Minutes, match simulation, and the five-week programme that writes the letter.">
+  <meta property="og:image" content="https://fpl-manager.com/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.bunny.net">
+  <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css?v=com1">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><g fill="#00ff87"><rect x="13" y="3" width="2.2" height="2.2"/><rect x="17" y="3" width="2.2" height="2.2"/><rect x="5" y="10" width="2.2" height="2.2"/><rect x="10" y="10" width="2.2" height="2.2"/><rect x="15" y="10" width="2.2" height="2.2"/><rect x="20" y="10" width="2.2" height="2.2"/><rect x="25" y="10" width="2.2" height="2.2"/><rect x="5" y="17" width="2.2" height="2.2"/><rect x="10" y="17" width="2.2" height="2.2"/><rect x="15" y="17" width="2.2" height="2.2"/><rect x="20" y="17" width="2.2" height="2.2"/><rect x="25" y="17" width="2.2" height="2.2"/><rect x="10" y="24" width="2.2" height="2.2"/><rect x="15" y="24" width="2.2" height="2.2"/><rect x="20" y="24" width="2.2" height="2.2"/></g></svg>
+        <span><span class="brand-name">FPL Manager</span><span class="brand-tag">Deadline letter</span></span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="method.html" aria-current="page">How it chooses</a>
+        <a href="subscribe.html">Subscribe</a>
+        <a href="legal.html">Legal</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap masthead">
+      <p class="kicker">Method · what the code actually maximises</p>
+      <h1>How a letter is chosen</h1>
+      <p class="lede">Expected points from a match simulation, then a mixed-integer programme under FPL’s constraints. The same mathematics that writes the weekly email, in prose.</p>
+    </div>
+
+    <div class="wrap section" style="border-bottom:0; padding-bottom:0">
+      <div class="prose">
+        <p>Contents: <span class="toc">
+          <a href="#loop">the loop</a> ·
+          <a href="#minutes">minutes</a> ·
+          <a href="#match">the match draw</a> ·
+          <a href="#markets">markets</a> ·
+          <a href="#mip">the MIP</a> ·
+          <a href="#transfers">transfers &amp; hits</a> ·
+          <a href="#chips">chips</a> ·
+          <a href="#example">worked example</a> ·
+          <a href="#limits">limits</a>
+        </span></p>
+      </div>
+    </div>
+
+    <section class="section" id="loop">
+      <div class="wrap section-split">
+        <p class="section-num">01</p>
+        <div class="prose">
+          <h2>The loop</h2>
+          <p>Once, for the whole league: pull the public FPL player list and fixtures, estimate minutes and per-90 rates, simulate every player’s next five gameweeks, cache a table of means and variances.</p>
+          <p>Then, for you: read the public entry (current 15, bank, chips used, transfer history for sell prices). Solve the squad. Render the letter. Nothing is posted back to FPL.</p>
+          <p>The daily job only sends when a deadline is within 60 hours, or when you force a run.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="minutes">
+      <div class="wrap section-split">
+        <p class="section-num">02</p>
+        <div class="prose">
+          <h2>Minutes</h2>
+          <p>Appearance points sit on the 60-minute cliff, so minutes are modelled first. Last six matches are exponentially weighted with half-life 3. That produces P(start), P(cameo), and expected minutes in each bucket. Injured / suspended / unavailable goes to zero. “Doubtful” is scaled by FPL’s published chance of playing next round.</p>
+          <p>Summer signings keep last season’s minutes only as a weak prior. A 27-minute outing stays in the cameo bucket; eighty minutes is a start.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="match">
+      <div class="wrap section-split">
+        <p class="section-num">03</p>
+        <div class="prose">
+          <h2>The match draw</h2>
+          <p>Attacking rates (xG/90, xA/90) are shrunk toward a position prior:</p>
+          <div class="formula" role="img" aria-label="Empirical Bayes shrinkage of a per-90 rate">
+            rate = (n<sub>90</sub> / (n<sub>90</sub> + 5)) · observed + (5 / (n<sub>90</sub> + 5)) · prior
+            <div class="formula-caption">Same idea for yellows and saves. n<sub>90</sub> is minutes / 90, reduced for summer arrivals.</div>
+          </div>
+          <p>Fixture strength uses FPL’s own attack/defence ratings, home/away, and FDR. Set-piece roles (penalties, corners, direct free kicks) are layered on and a typical penalty xG is stripped from stayers so pens are not counted twice. Missed penalties are −2 in the same draw. Bonus is crude: 0.3 × (goals + assists) inside the draw.</p>
+          <p>Every player in a fixture shares one scoreline. Home and away goals are Poisson with team λ. If your team’s goals come up 0, that player’s goals and assists in that world are zeroed. Clean sheet requires opponent 0 and ≥60 minutes. Goalkeepers and defenders lose a point per two conceded on that same draw.</p>
+          <div class="formula" role="img" aria-label="Clean sheet probability from concede lambda">
+            P(team CS) = e<sup>−λ<sub>opp</sub></sup>
+            <div class="formula-caption">λ<sub>opp</sub> is how many the opponent is expected to score. The shared draw is what actually happens in each Monte Carlo world; this exponential is the mean.</div>
+          </div>
+          <p>Linearity of expectation still holds: three Arsenal defenders have three times the clean-sheet points in the mean. What the shared draw forbids is a world where Arsenal keep a clean sheet and Saka also scored.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="markets">
+      <div class="wrap section-split">
+        <p class="section-num">04</p>
+        <div class="prose">
+          <h2>Markets</h2>
+          <p>For EPL fixtures with a liquid Polymarket regular-time team-total Over/Under 0.5, Under is P(that side scores 0). Opponent clean sheet is the other team’s blank. Prices that sum past 1.00 are de-vigged. First-half lines are ignored.</p>
+          <div class="formula" role="img" aria-label="Market lambda from probability of a blank">
+            λ<sub>mkt</sub> = clip( −log P(under 0.5), 0.35, 3.2 )
+            <div class="formula-caption">Blended with FPL λ at weight 0.7 once liquidity ≥ 800. Below 80, weight is 0. Sharpness uses liquidityNum; the $12 “Vol” figure on Polymarket is ignored.</div>
+          </div>
+          <p>Over 1.5 / 2.5 is not read. A 4–0 is whatever this Poisson λ implies, plus FPL’s −1 per two conceded. Later gameweeks with no book stay on FPL xGC until the market lists them.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="mip">
+      <div class="wrap section-split">
+        <p class="section-num">05</p>
+        <div class="prose">
+          <h2>The fifteen and the eleven</h2>
+          <p>PuLP + CBC. Binary own / start / captain variables. Constraints are the game: 2 GK, 5 DEF, 5 MID, 3 FWD; max three per club; exactly one starting keeper; at least three defenders, two midfielders, one forward; budget in tenths of a million.</p>
+          <p>XI and captain are re-picked each of the next five gameweeks inside the solver. The <em>email’s</em> (C) and (V) are then overwritten to this gameweek’s highest-μ starters — the MIP may have used mean–variance to decide who to own; the armband on the letter is who you should actually click.</p>
+          <p>Anyone with P(play) &lt; 0.55 cannot start. A fifth starting defender costs 1.2 xP per week in the objective; a one-forward XI costs 0.8. Bench is worth 0.1 × their μ, which also gives Bench Boost something to look at.</p>
+          <div class="formula" role="img" aria-label="Mean-variance MIP objective">
+            max &nbsp; Σ<sub>w</sub> δ<sup>w</sup> [ Σ<sub>i</sub> ( s<sub>i,w</sub> + c<sub>i,w</sub> + 0.1 b<sub>i,w</sub> ) μ<sub>i,w</sub>
+            − 1.2 · 5thDef<sub>w</sub> − 0.8 · 1Fwd<sub>w</sub> ]
+            − λ<sub>var</sub> Σ<sub>w</sub> δ<sup>w</sup> [ Σ<sub>i</sub> ( s<sub>i,w</sub> + 3 c<sub>i,w</sub> ) σ²<sub>i,w</sub> ]
+            <div class="formula-caption">λ<sub>var</sub> = 0.02. Discount δ is 1.0 today, so five weeks are unweighted. Leftover bank is not in this sum. It is worth 0.</div>
+          </div>
+          <p>The square-root mean–SD utility from textbooks is replaced by a linear penalty on variance so the programme stays a MIP. Captain variance is tripled (captain points are an extra copy of the player, so variance scales by 1+3=4 on that extra — the code uses 3 × σ² on the captain variable plus 1 × on the start variable).</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="transfers">
+      <div class="wrap section-split">
+        <p class="section-num">06</p>
+        <div class="prose">
+          <h2>Transfers, hits, unused frees</h2>
+          <p>The solver is run at T = 0, 1, and 2 relative to your current fifteen. After that:</p>
+          <div class="formula" role="img" aria-label="Hit cost and unused free transfer bonus">
+            objective ← objective − 4 · max(0, T − F) + 1.5 · max(0, F − T)
+            <div class="formula-caption">F is free transfers. Rolling a free transfer is worth a constant 1.5 points.</div>
+          </div>
+          <p>A hit is rejected unless the three-gameweek XI gain versus rolling beats 4 plus a 1.0 margin. Incoming outfielders must start this gameweek (backup keeper excepted). If the “best” T=2 is Wharton to the bench, that plan is delayed — next week’s free transfer can still fetch him after results.</p>
+          <p>Wildcard rebuilds the 15 at current sell-plus-bank. Free Hit rebuilds this week only, then reverts. Neither is played just because the MIP gap is pretty. See chips.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="chips">
+      <div class="wrap section-split">
+        <p class="section-num">07</p>
+        <div class="prose">
+          <h2>Chips as stopping problems</h2>
+          <p>Triple Captain extra value this week is the captain’s μ. Bench Boost is the sum of bench μ. Play now if that beats the expected best remaining week, estimated by Monte Carlo with noise and a prior that a double gameweek is still coming (until fixtures confirm). Epsilon 0.5 points so the letter does not flip on a knife-edge.</p>
+          <p>Wildcard and Free Hit: the MIP gap is shrunk while this season is still a small sample (GW2 is one result). The first n/e usable weeks of each half are for looking, unless the trusted gap is an outlier. After that, play if the trusted gap beats the expected best remaining swing. Unused chips get cheaper to fire in the last three gameweeks of GW19 and GW38. One chip per week: if Wildcard or Free Hit is the move, Triple Captain and Bench Boost stay in the packet.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="example">
+      <div class="wrap section-split">
+        <p class="section-num">08</p>
+        <div>
+          <h2>Worked example</h2>
+          <p class="prose">Why Cherki → Ndiaye on one free transfer with £1.5m left in the bank.</p>
+          <table class="sheet">
+            <thead>
+              <tr><th>Fact</th><th>What the programme does with it</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Cherki played 27 minutes</td><td>Cameo bucket. Five-week μ is minutes-starved.</td></tr>
+              <tr><td>Ndiaye modelled as a 90-minute mid</td><td>Appearance points plus a full rate × minutes.</td></tr>
+              <tr><td>T = 1, F = 1</td><td>Hit 0. Unused FT bonus 0 because the free transfer is spent.</td></tr>
+              <tr><td>£1.5m left in the bank</td><td>Does not increase the objective. Spending it on a worse mid would lose.</td></tr>
+              <tr><td>Wharton would not start this GW</td><td>That incoming is illegal for this letter. Delayed.</td></tr>
+              <tr><td>Fernandes μ &gt; Szoboszlai μ this GW</td><td>Armband on Fernandes even if Szoboszlai wins the five-week table.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="limits">
+      <div class="wrap section-split">
+        <p class="section-num">09</p>
+        <div class="prose">
+          <h2>Limits</h2>
+          <p>Variance in the MIP still adds player σ² as if they were independent. The shared scoreline is in each player’s own μ and σ². Clean-sheet points already sit in those means; the optimiser does not add a covariance bonus for stacking a back line.</p>
+          <p>Two midfielders can still both be credited with a goal when the team only scored one. Price changes are left to FPL. Mid-week unpublished squads are invisible until the next deadline publishes picks. Team strength uses FPL’s attack and defence ratings. Sell prices follow the public transfer history and the usual half-profit rule.</p>
+          <p>If Polymarket is down, FPL λ is used and the run continues. The letter will say when team totals were blended.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p><a href="subscribe.html">Subscribe</a> · <a href="/">Home</a> · <a href="legal.html">Legal</a></p>
+      <p>Unofficial. Print this page if you want the method on paper.</p>
+    </div>
+  </footer>
+</body>
+</html>
