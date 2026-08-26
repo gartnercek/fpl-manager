@@ -128,10 +128,13 @@ export async function onRequestPost({ request, env }) {
   params.set("metadata[plan]", plan);
   params.set("metadata[season]", season);
   if (name) params.set("metadata[name]", name);
-  params.set(
-    "custom_text[submit][message]",
-    "Unofficial FPL advice. You still make the clicks on the official site."
-  );
+  // Managed Payments owns Checkout copy and tax; custom_text is rejected.
+  if (!useManaged) {
+    params.set(
+      "custom_text[submit][message]",
+      "Unofficial FPL advice. You still make the clicks on the official site."
+    );
+  }
 
   if (monthly) {
     params.set("subscription_data[metadata][team_id]", teamId);
