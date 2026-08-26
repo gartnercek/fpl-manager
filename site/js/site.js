@@ -43,15 +43,29 @@
   if (monthAmt) {
     monthAmt.innerHTML = "€" + cfg.monthly + " <span>/ month</span>";
   }
-  var seasonRadio = $("#plan-season-label");
-  var monthRadio = $("#plan-month-label");
-  if (seasonRadio) {
-    seasonRadio.textContent =
-      "Season " + (cfg.seasonName || "") + " · €" + cfg.season;
+
+  function setPlan(plan) {
+    if (plan !== "monthly") plan = "season";
+    var cards = document.querySelectorAll(".price-card[data-plan]");
+    for (var i = 0; i < cards.length; i++) {
+      var on = cards[i].getAttribute("data-plan") === plan;
+      cards[i].classList.toggle("preferred", on);
+      cards[i].setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    var hidden = $("#plan-value");
+    if (hidden) hidden.value = plan;
+    var cta = $("#price-cta");
+    if (cta) cta.setAttribute("href", "subscribe.html?plan=" + plan);
   }
-  if (monthRadio) {
-    monthRadio.textContent = "Monthly · €" + cfg.monthly;
+
+  var planCards = document.querySelectorAll(".price-card[data-plan]");
+  for (var c = 0; c < planCards.length; c++) {
+    planCards[c].addEventListener("click", function () {
+      setPlan(this.getAttribute("data-plan"));
+    });
   }
+  var qPlan = new URLSearchParams(location.search).get("plan");
+  if (qPlan === "monthly" || qPlan === "season") setPlan(qPlan);
 
   var manage = $("#manage-billing");
   if (manage) {
@@ -166,7 +180,7 @@
     }
     if (idInput) idInput.value = id;
 
-    var plan = ($("input[name='plan']:checked") || {}).value || "season";
+    var plan = ($("#plan-value") && $("#plan-value").value) || "season";
     var name = ($("#name") && $("#name").value) || "";
 
     ev.preventDefault();

@@ -26,7 +26,7 @@
   <meta name="twitter:image" content="https://fpl-manager.com/og.png">
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=bleed1">
+  <link rel="stylesheet" href="css/site.css?v=copy2">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -204,21 +204,21 @@
       <div class="wrap section-split">
         <p class="section-num">04 / Price</p>
         <div>
-          <div class="price-grid">
-            <article class="price-card preferred">
+          <div class="price-grid" role="radiogroup" aria-label="Subscription plan">
+            <button type="button" class="price-card preferred" data-plan="season" aria-pressed="true" id="plan-card-season">
               <p class="pill">Better value</p>
               <h3>Season</h3>
               <p class="price-amt" id="price-season">€79 <span>/ 2026/27</span></p>
               <p>Every deadline letter until GW38. One payment on Stripe. No auto-renew into next season.</p>
-            </article>
-            <article class="price-card">
+            </button>
+            <button type="button" class="price-card" data-plan="monthly" aria-pressed="false" id="plan-card-monthly">
               <h3>Monthly</h3>
               <p class="price-amt" id="price-month">€19 <span>/ month</span></p>
               <p>If you only want a stretch of the season. Cancel any time from the Stripe customer portal.</p>
-            </article>
+            </button>
           </div>
           <p class="prose">Pay by card on Stripe. No FPL password. First intake is a small paid list.</p>
-          <p><a class="btn" href="subscribe.html">Subscribe with your team ID</a></p>
+          <p><a class="btn" id="price-cta" href="subscribe.html?plan=season">Subscribe with your team ID</a></p>
         </div>
       </div>
     </section>
@@ -278,6 +278,6 @@
     </div>
   </footer>
   <script src="js/config.js?v=com1"></script>
-  <script src="js/site.js?v=copy1"></script>
+  <script src="js/site.js?v=copy2"></script>
 </body>
 </html>

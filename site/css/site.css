@@ -511,6 +511,26 @@ dl.defs dd {
   border: 1px solid var(--ink);
   padding: 1.15rem 1.2rem 1.05rem;
   background: transparent;
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.price-card:hover:not(.preferred) {
+  border-color: var(--pl);
+  background: var(--paper-2);
+}
+
+.price-card:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
 }
 
 .price-card.preferred {
@@ -524,8 +544,31 @@ dl.defs dd {
   color: rgba(255, 255, 255, 0.82);
 }
 
+.price-card.preferred h3 {
+  color: #fff;
+}
+
 .price-card h3 {
   margin: 0 0 0.35rem;
+}
+
+.plan-pick-label {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  margin: 0.9rem 0 0.3rem;
+}
+
+.plan-pick {
+  margin-top: 0.35rem;
+}
+
+.plan-pick .price-card {
+  padding: 0.9rem 1rem;
+}
+
+.plan-pick .price-amt {
+  font-size: 1.7rem;
+  margin: 0.25rem 0 0;
 }
 
 .price-amt {

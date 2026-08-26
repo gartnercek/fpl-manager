@@ -16,7 +16,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=bleed1">
+  <link rel="stylesheet" href="css/site.css?v=copy2">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -108,15 +108,19 @@
           <input id="team-id" name="team_id" type="text" inputmode="numeric" autocomplete="off" required placeholder="1234567 or paste the entry URL">
           <span class="hint">Public data only. Same ID anyone can see on a mini-league page.</span>
 
-          <p style="margin:1.1rem 0 0.3rem">Plan</p>
-          <label class="check" style="margin-top:0.3rem">
-            <input type="radio" name="plan" value="season" checked>
-            <span id="plan-season-label">Season 2026/27 · €79</span>
-          </label>
-          <label class="check">
-            <input type="radio" name="plan" value="monthly">
-            <span id="plan-month-label">Monthly · €19</span>
-          </label>
+          <p class="plan-pick-label" id="plan-pick-label">Plan</p>
+          <div class="price-grid plan-pick" role="radiogroup" aria-labelledby="plan-pick-label">
+            <button type="button" class="price-card preferred" data-plan="season" aria-pressed="true">
+              <p class="pill">Better value</p>
+              <h3>Season</h3>
+              <p class="price-amt" id="price-season">€79 <span>/ 2026/27</span></p>
+            </button>
+            <button type="button" class="price-card" data-plan="monthly" aria-pressed="false">
+              <h3>Monthly</h3>
+              <p class="price-amt" id="price-month">€19 <span>/ month</span></p>
+            </button>
+          </div>
+          <input type="hidden" name="plan" id="plan-value" value="season">
 
           <label class="check">
             <input id="consent" name="consent" type="checkbox" required>
@@ -144,6 +148,6 @@
     </div>
   </footer>
   <script src="js/config.js?v=com1"></script>
-  <script src="js/site.js?v=copy1"></script>
+  <script src="js/site.js?v=copy2"></script>
 </body>
 </html>
