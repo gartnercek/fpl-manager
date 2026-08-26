@@ -17,6 +17,7 @@ STRIPE_PRICE_SEASON = "price_1U8lpoAoVac84U9IFNdW9zDc"
 STRIPE_PRICE_MONTHLY = "price_1U8lpoAoVac84U9IgSs9qRmz"
 STRIPE_SEASON = "2026/27"
 SITE_ORIGIN = "https://fpl-manager.com"
+PAYMENTS_OPEN = "1"
 
 # Attach the registrar zone to this Worker. Do not add these on Pages.
 [[routes]]

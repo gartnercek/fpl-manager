@@ -80,6 +80,16 @@ export default {
     }
     if (path === "/api/stripe-webhook") {
       if (request.method === "POST") return webhookPost(c);
+      if (request.method === "GET" || request.method === "HEAD") {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            receive: "POST",
+            hint: "Stripe sends events here. Opening this URL in a browser is fine; it cannot take GET payments.",
+          }),
+          { status: 200, headers: { "content-type": "application/json; charset=utf-8" } }
+        );
+      }
       return methodNotAllowed();
     }
 
