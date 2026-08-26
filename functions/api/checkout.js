@@ -21,6 +21,7 @@ export async function onRequestGet({ env }) {
     configured: hasStripeKey && hasPrices && open,
     payments_open: open,
     has_stripe_key: hasStripeKey,
+    has_webhook_secret: Boolean(env.STRIPE_WEBHOOK_SECRET),
     has_prices: hasPrices,
     managed_payments: managedPayments(env),
     beta: !open,

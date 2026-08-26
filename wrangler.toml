@@ -1,10 +1,12 @@
 # Worker + static assets. Deploy: npx wrangler deploy
 # Cloudflare Workers Builds project is fpl-manager2 (not Pages).
+# keep_vars: git deploys must not wipe dashboard Variables and Secrets.
 name = "fpl-manager2"
 main = "worker.js"
 compatibility_date = "2025-08-15"
 account_id = "4ca0f1d6e68a3390a3aad288ac62a887"
 workers_dev = true
+keep_vars = true
 
 [assets]
 directory = "site"
