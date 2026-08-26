@@ -6,6 +6,10 @@ import {
   onRequestGet as checkoutGet,
   onRequestPost as checkoutPost,
 } from "./functions/api/checkout.js";
+import {
+  onRequestGet as betaGet,
+  onRequestPost as betaPost,
+} from "./functions/api/beta.js";
 import { onRequestPost as portalPost } from "./functions/api/portal.js";
 import { onRequestPost as webhookPost } from "./functions/api/stripe-webhook.js";
 
@@ -60,6 +64,11 @@ export default {
     const path = url.pathname.replace(/\/+$/, "") || "/";
     const c = pagesCtx(request, env, ctx);
 
+    if (path === "/api/beta") {
+      if (request.method === "GET") return betaGet(c);
+      if (request.method === "POST") return betaPost(c);
+      return methodNotAllowed();
+    }
     if (path === "/api/checkout") {
       if (request.method === "GET") return checkoutGet(c);
       if (request.method === "POST") return checkoutPost(c);

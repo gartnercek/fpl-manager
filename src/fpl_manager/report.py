@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import os
 import smtplib
+from contextlib import contextmanager
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Iterator
 from zoneinfo import ZoneInfo
 
 from jinja2 import Template
@@ -321,21 +323,48 @@ def fingerprint(plan: Plan, chips: ChipAdvice) -> str:
     return json.dumps(payload, sort_keys=True)
 
 
-def send_email(subject: str, text: str, html: str) -> None:
+@contextmanager
+def smtp_connection() -> Iterator[smtplib.SMTP]:
     host = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
     port = int(os.environ.get("SMTP_PORT") or "587")
     user = os.environ.get("SMTP_USER")
     password = os.environ.get("SMTP_PASSWORD")
-    to_addr = os.environ.get("EMAIL_TO")
-    if not (user and password and to_addr):
-        raise RuntimeError("SMTP_USER, SMTP_PASSWORD, and EMAIL_TO must be set to send email")
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = user
-    msg["To"] = to_addr
-    msg.attach(MIMEText(text, "plain", "utf-8"))
-    msg.attach(MIMEText(html, "html", "utf-8"))
+    if not (user and password):
+        raise RuntimeError("SMTP_USER and SMTP_PASSWORD must be set to send email")
     with smtplib.SMTP(host, port, timeout=30) as smtp:
         smtp.starttls()
         smtp.login(user, password)
-        smtp.sendmail(user, [to_addr], msg.as_string())
+        yield smtp
+
+
+def send_email(
+    subject: str,
+    text: str,
+    html: str,
+    *,
+    to_addr: str | None = None,
+    smtp: smtplib.SMTP | None = None,
+) -> None:
+    user = os.environ.get("SMTP_USER")
+    password = os.environ.get("SMTP_PASSWORD")
+    to_addr = (to_addr or os.environ.get("EMAIL_TO") or "").strip()
+    if not to_addr:
+        raise RuntimeError("No recipient: pass to_addr or set EMAIL_TO")
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = user or to_addr
+    msg["To"] = to_addr
+    reply = (os.environ.get("EMAIL_REPLY_TO") or "").strip()
+    if reply:
+        msg["Reply-To"] = reply
+    msg.attach(MIMEText(text, "plain", "utf-8"))
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    payload = msg.as_string()
+    if smtp is not None:
+        from_addr = user or to_addr
+        smtp.sendmail(from_addr, [to_addr], payload)
+        return
+    if not (user and password):
+        raise RuntimeError("SMTP_USER, SMTP_PASSWORD, and a recipient must be set to send email")
+    with smtp_connection() as connection:
+        connection.sendmail(user, [to_addr], payload)

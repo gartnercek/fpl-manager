@@ -4,11 +4,19 @@ const TEAM_RE = /^[1-9][0-9]{0,9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INTEGRATION_ID = "fpl-letter-vnhqxlrw";
 
+function paymentsOpen(env) {
+  return env.PAYMENTS_OPEN === "1" || env.PAYMENTS_OPEN === "true";
+}
+
 export async function onRequestGet({ env }) {
-  const configured = Boolean(
-    env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_SEASON && env.STRIPE_PRICE_MONTHLY
-  );
-  return json({ ok: true, configured });
+  const open = paymentsOpen(env);
+  const keys = Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_SEASON && env.STRIPE_PRICE_MONTHLY);
+  return json({
+    ok: true,
+    configured: keys && open,
+    payments_open: open,
+    beta: !open,
+  });
 }
 
 async function findOrCreateCustomer(secret, { email, name, teamId, plan, season }) {
@@ -36,6 +44,12 @@ async function findOrCreateCustomer(secret, { email, name, teamId, plan, season 
 }
 
 export async function onRequestPost({ request, env }) {
+  if (!paymentsOpen(env)) {
+    return json(
+      { error: "Payments are not open. Join the free beta instead.", beta: true },
+      503
+    );
+  }
   const secret = env.STRIPE_SECRET_KEY;
   const priceSeason = env.STRIPE_PRICE_SEASON;
   const priceMonthly = env.STRIPE_PRICE_MONTHLY;

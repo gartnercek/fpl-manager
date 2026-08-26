@@ -20,3 +20,10 @@ custom_domain = true
 [[routes]]
 pattern = "www.fpl-manager.com"
 custom_domain = true
+
+# Free-beta emails + FPL team IDs. Create with:
+#   npx wrangler kv namespace create BETA_SIGNUPS
+# then paste the id here and redeploy. Without it, join returns an error.
+# [[kv_namespaces]]
+# binding = "BETA_SIGNUPS"
+# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

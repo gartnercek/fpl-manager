@@ -105,19 +105,24 @@
   var status = $("#form-status");
   var submitBtn = form.querySelector('button[type="submit"]');
   var checkoutPath = cfg.checkoutPath || "/api/checkout";
+  var betaPath = cfg.betaPath || "/api/beta";
+  var paymentsOpen = false;
 
   if (new URLSearchParams(location.search).get("cancelled") === "1" && status) {
     status.className = "alert show";
     status.textContent = "Checkout closed without a payment. Nothing was charged.";
   }
 
-  fetch(checkoutPath, { method: "GET" })
+  fetch(betaPath, { method: "GET" })
     .then(function (r) {
       return r.ok ? r.json() : null;
     })
     .then(function (info) {
-      if (info && info.configured && submitBtn) {
-        submitBtn.textContent = "Continue to payment";
+      if (info && info.payments_open) {
+        paymentsOpen = true;
+        if (submitBtn) submitBtn.textContent = "Continue to payment";
+      } else if (submitBtn) {
+        submitBtn.textContent = "Join the free beta";
       }
     })
     .catch(function () {});
@@ -135,32 +140,21 @@
     }
   }
 
-  function mailtoFallback(email, teamId, plan, name) {
-    if (!cfg.contactEmail) return "";
-    var body =
-      "Name: " +
-      name +
-      "\nEmail: " +
-      email +
-      "\nFPL team ID: " +
-      teamId +
-      "\nPlan: " +
-      plan +
-      "\n";
-    return (
-      "mailto:" +
-      cfg.contactEmail +
-      "?subject=" +
-      encodeURIComponent("FPL Manager subscribe " + teamId) +
-      "&body=" +
-      encodeURIComponent(body)
-    );
-  }
-
   function fail(msg) {
     status.className = "alert show";
     status.textContent = msg;
     if (submitBtn) submitBtn.disabled = false;
+  }
+
+  function showBetaOk(updated) {
+    status.className = "alert show ok";
+    status.textContent = updated
+      ? "Updated. Same email, new team ID. The next deadline letter uses that squad."
+      : "You’re on the free beta. No card was taken. The weekly letter uses this email and team ID. We will write before paid plans open.";
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Joined";
+    }
   }
 
   form.addEventListener("submit", function (ev) {
@@ -168,6 +162,7 @@
     var email = ($("#email") && $("#email").value) || "";
     var consent = $("#consent");
     var unofficial = $("#unofficial");
+    var hp = $("#company");
     var errs = [];
     if (!id) errs.push("Need a numeric FPL team ID (or paste the entry URL).");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.push("Need a working email.");
@@ -195,6 +190,35 @@
       name: name,
       consent: true,
     };
+    if (hp && hp.value) payload._gotcha = hp.value;
+
+    if (!paymentsOpen) {
+      fetch(betaPath, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          var ct = r.headers.get("content-type") || "";
+          if (ct.indexOf("json") === -1) {
+            return { ok: false, status: r.status, data: {} };
+          }
+          return r.json().then(function (data) {
+            return { ok: r.ok, status: r.status, data: data };
+          });
+        })
+        .then(function (res) {
+          if (res.ok && res.data && res.data.ok) {
+            showBetaOk(res.data.updated);
+            return;
+          }
+          fail((res.data && res.data.error) || "Could not join the beta. Try again in a moment.");
+        })
+        .catch(function () {
+          fail("Could not reach the beta list. Try again in a moment.");
+        });
+      return;
+    }
 
     fetch(checkoutPath, {
       method: "POST",
@@ -220,38 +244,12 @@
           location.href = link;
           return;
         }
-        if (cfg.formspreeId) {
-          form.setAttribute("action", "https://formspree.io/f/" + cfg.formspreeId);
-          form.setAttribute("method", "POST");
-          form.submit();
-          return;
-        }
-        var mail = mailtoFallback(email, id, plan, name);
-        if (mail) {
-          status.className = "alert show ok";
-          status.innerHTML =
-            "Card checkout is not live on this host. Send the details instead: <a href=\"" +
-            mail +
-            "\">open an email</a>.";
-          window.location.href = mail;
-          return;
-        }
         fail(
           (res.data && res.data.error) ||
-            "Checkout is not live yet. Set Stripe on Cloudflare Pages, or a Payment Link in js/config.js."
+            "Checkout is not live yet. Join the free beta, or set Stripe when payments open."
         );
       })
       .catch(function () {
-        var link = paymentUrl(plan, email, id);
-        if (link) {
-          location.href = link;
-          return;
-        }
-        var mail = mailtoFallback(email, id, plan, name);
-        if (mail) {
-          window.location.href = mail;
-          return;
-        }
         fail("Could not reach checkout. Try again in a moment.");
       });
   });

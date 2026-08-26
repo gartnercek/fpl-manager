@@ -76,6 +76,9 @@ schedule:
 
 fetch_element_summaries: false
 
+billing:
+  season: "2026/27"
+
 # Polymarket EPL team totals (O/U 0.5) -> P(team scores 0) = opponent CS.
 # Public Gamma API; no trading key. Thin books are shrunk toward FPL lambda.
 markets:

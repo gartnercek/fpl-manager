@@ -4,6 +4,8 @@ window.FPL_SITE = {
   monthly: 19,
   season: 79,
   seasonName: "2026/27",
+  beta: true,
+  betaPath: "/api/beta",
   checkoutPath: "/api/checkout",
   paymentLinkSeason: "",
   paymentLinkMonthly: "",

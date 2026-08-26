@@ -26,7 +26,7 @@
   <meta name="twitter:image" content="https://fpl-manager.com/og.png">
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=copy2">
+  <link rel="stylesheet" href="css/site.css?v=beta1">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -56,8 +56,9 @@
         "offers": {
           "@type": "AggregateOffer",
           "priceCurrency": "EUR",
-          "lowPrice": "19",
+          "lowPrice": "0",
           "highPrice": "79",
+          "offerCount": 3,
           "url": "https://fpl-manager.com/subscribe.html"
         },
         "description": "Automated FPL team planner that emails a weekly squad letter: transfers, starting XI, captain, and chips."
@@ -94,7 +95,7 @@
             "name": "Do I give you my FPL password?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Checkout is on Stripe. The letter uses only your public FPL team ID. You still make every click on the official site."
+              "text": "No. The free beta asks only for an email and your public FPL team ID. You still make every click on the official site. Cards come later, when paid plans open."
             }
           },
           {
@@ -122,7 +123,7 @@
       <nav aria-label="Primary">
         <a href="/" aria-current="page">Home</a>
         <a href="method.html">How it chooses</a>
-        <a href="subscribe.html">Subscribe</a>
+        <a href="subscribe.html">Join beta</a>
         <a href="legal.html">Legal</a>
       </nav>
     </div>
@@ -131,11 +132,11 @@
   <main id="main">
     <div class="masthead">
       <div class="wrap">
-        <p class="kicker">Season 2026/27 · unofficial FPL team planner</p>
+        <p class="kicker">Season 2026/27 · free beta · unofficial FPL team planner</p>
         <h1>The FPL team builder that writes your deadline letter.</h1>
-        <p class="lede">One email a week: who to sell, who to buy, who starts, who wears the armband, and whether a chip is worth playing this gameweek. You still make the clicks.</p>
+        <p class="lede">One email a week: who to sell, who to buy, who starts, who wears the armband, and whether a chip is worth playing this gameweek. The first intake is free. Paid season and monthly plans come later. You still make the clicks.</p>
         <div class="cta-row">
-          <a class="btn" href="subscribe.html">Subscribe</a>
+          <a class="btn" href="subscribe.html">Join the free beta</a>
           <a href="method.html">How the planner chooses →</a>
         </div>
       </div>
@@ -161,7 +162,7 @@
       <div class="wrap section-split">
         <p class="section-num">02 / A real letter</p>
         <div>
-          <p class="prose">Gameweek 2, 2026/27. Same engine that writes to a subscriber. Formation 4-4-2, one free transfer. Leftover bank is ignored by the objective: it is worth nothing until you spend it.</p>
+          <p class="prose">Gameweek 2, 2026/27. Same engine that writes to a beta reader. Formation 4-4-2, one free transfer. Leftover bank is ignored by the objective: it is worth nothing until you spend it.</p>
           <div class="letter" aria-label="Sample weekly FPL letter">
             <div class="letter-meta">
               <span>GW2 · Fri 28 Aug 19:30 CEST</span>
@@ -204,21 +205,23 @@
       <div class="wrap section-split">
         <p class="section-num">04 / Price</p>
         <div>
-          <div class="price-grid" role="radiogroup" aria-label="Subscription plan">
+          <p class="prose">Checkout is closed. The first intake is a <strong>free beta</strong>: email plus public team ID, weekly letter, no card. When paid subscriptions roll out we will write to that list before anything is charged.</p>
+          <div class="price-grid" role="radiogroup" aria-label="Later paid plans">
             <button type="button" class="price-card preferred" data-plan="season" aria-pressed="true" id="plan-card-season">
-              <p class="pill">Better value</p>
+              <p class="pill">Later</p>
               <h3>Season</h3>
               <p class="price-amt" id="price-season">€79 <span>/ 2026/27</span></p>
-              <p>Every deadline letter until GW38. One payment on Stripe. No auto-renew into next season.</p>
+              <p>Planned: every deadline letter until GW38. One payment. No auto-renew into next season. Not on sale yet.</p>
             </button>
             <button type="button" class="price-card" data-plan="monthly" aria-pressed="false" id="plan-card-monthly">
+              <p class="pill">Later</p>
               <h3>Monthly</h3>
               <p class="price-amt" id="price-month">€19 <span>/ month</span></p>
-              <p>If you only want a stretch of the season. Cancel any time from the Stripe customer portal.</p>
+              <p>Planned: a stretch of the season, cancel any time. Not on sale yet.</p>
             </button>
           </div>
-          <p class="prose">Pay by card on Stripe. No FPL password. First intake is a small paid list.</p>
-          <p><a class="btn" id="price-cta" href="subscribe.html?plan=season">Subscribe with your team ID</a></p>
+          <p class="prose">No FPL password. Pick a future plan if you like; it is only a preference.</p>
+          <p><a class="btn" id="price-cta" href="subscribe.html?plan=season">Join the free beta</a></p>
         </div>
       </div>
     </section>
@@ -241,7 +244,7 @@
           </details>
           <details>
             <summary>Do I hand over my FPL login?</summary>
-            <p>Never. Stripe takes the card. The mailer reads the same public team page anyone can open with your team ID.</p>
+            <p>Never. The beta takes an email and the public team ID. The mailer reads the same public team page anyone can open with that ID. Cards are for the later paid rollout.</p>
           </details>
           <details>
             <summary>Can I ask more about how the bot works?</summary>
@@ -272,12 +275,12 @@
     <div class="wrap">
       <div>
         <p class="colophon">fpl-manager.com · unofficial Fantasy Premier League advice</p>
-        <p><a href="subscribe.html">Subscribe</a> · <a href="method.html">Method</a> · <a href="legal.html">Privacy &amp; terms</a></p>
+        <p><a href="subscribe.html">Join beta</a> · <a href="method.html">Method</a> · <a href="legal.html">Privacy &amp; terms</a></p>
       </div>
       <p><a href="mailto:support@fpl-manager.com">support@fpl-manager.com</a></p>
     </div>
   </footer>
-  <script src="js/config.js?v=com1"></script>
-  <script src="js/site.js?v=copy2"></script>
+  <script src="js/config.js?v=beta1"></script>
+  <script src="js/site.js?v=beta1"></script>
 </body>
 </html>

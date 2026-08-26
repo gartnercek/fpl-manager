@@ -74,6 +74,18 @@ Do not enable `STRIPE_AUTOMATIC_TAX=1` until an active tax registration exists. 
 
 ## 3. What the form does
 
-The form posts `{ email, team_id, plan }` to `/api/checkout`. Stripe Checkout collects the card. Success returns to `https://fpl-manager.com/thanks.html?session_id=…`. **Manage billing** opens the Customer Portal.
+**Now:** the form is a **free beta**. It posts `{ email, team_id, plan }` to `/api/beta`. No Stripe checkout. `plan` is a preference for the later paid rollout (season €79 / monthly €19). Cap is 50 signups.
 
-The weekly job lists active Stripe subscriptions plus paid season Checkout Sessions for `2026/27`, then emails each public FPL team ID.
+Create KV, then uncomment the binding in `wrangler.toml`:
+
+```bash
+npx wrangler kv namespace create BETA_SIGNUPS
+```
+
+Worker secrets: `BETA_EXPORT_SECRET` (random string). Do **not** set `PAYMENTS_OPEN=1` until you are ready to take cards.
+
+GitHub Actions (weekly mailer): `BETA_LIST_URL=https://fpl-manager.com/api/beta` (variable) and the same `BETA_EXPORT_SECRET` (secret). Without KV, join returns an error on the page.
+
+**Later:** set `PAYMENTS_OPEN=1` on the Worker. The form switches to `/api/checkout`. Stripe Checkout collects the card. Success returns to `https://fpl-manager.com/thanks.html?session_id=…`. **Manage billing** opens the Customer Portal.
+
+The weekly job lists beta signups, then (when billing is on) active Stripe subscriptions plus paid season Checkout Sessions for `2026/27`, then emails each public FPL team ID.
