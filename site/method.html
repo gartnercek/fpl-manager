@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How the FPL planner chooses — FPL Manager</title>
+  <title>How the FPL planner chooses · FPL Manager</title>
   <meta name="description" content="How FPL Manager builds a weekly FPL team: minutes, match simulation, and the five-week mixed-integer programme behind transfers, XI, captain, and chips.">
   <link rel="canonical" href="https://fpl-manager.com/method.html">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <meta name="theme-color" content="#37003C">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://fpl-manager.com/method.html">
-  <meta property="og:title" content="How the FPL planner chooses — FPL Manager">
+  <meta property="og:title" content="How the FPL planner chooses · FPL Manager">
   <meta property="og:description" content="Minutes, match simulation, and the five-week programme that writes the letter.">
   <meta property="og:image" content="https://fpl-manager.com/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -55,7 +55,8 @@
           <a href="#transfers">transfers &amp; hits</a> ·
           <a href="#chips">chips</a> ·
           <a href="#example">worked example</a> ·
-          <a href="#limits">limits</a>
+          <a href="#limits">limits</a> ·
+          <a href="#contact">questions</a>
         </span></p>
       </div>
     </div>
@@ -125,7 +126,7 @@
         <div class="prose">
           <h2>The fifteen and the eleven</h2>
           <p>PuLP + CBC. Binary own / start / captain variables. Constraints are the game: 2 GK, 5 DEF, 5 MID, 3 FWD; max three per club; exactly one starting keeper; at least three defenders, two midfielders, one forward; budget in tenths of a million.</p>
-          <p>XI and captain are re-picked each of the next five gameweeks inside the solver. The <em>email’s</em> (C) and (V) are then overwritten to this gameweek’s highest-μ starters — the MIP may have used mean–variance to decide who to own; the armband on the letter is who you should actually click.</p>
+          <p>XI and captain are re-picked each of the next five gameweeks inside the solver. The <em>email’s</em> (C) and (V) are then overwritten to this gameweek’s highest-μ starters. The MIP may have used mean-variance to decide who to own; the armband on the letter is who you should actually click.</p>
           <p>Anyone with P(play) &lt; 0.55 cannot start. A fifth starting defender costs 1.2 xP per week in the objective; a one-forward XI costs 0.8. Bench is worth 0.1 × their μ, which also gives Bench Boost something to look at.</p>
           <div class="formula" role="img" aria-label="Mean-variance MIP objective">
             max &nbsp; Σ<sub>w</sub> δ<sup>w</sup> [ Σ<sub>i</sub> ( s<sub>i,w</sub> + c<sub>i,w</sub> + 0.1 b<sub>i,w</sub> ) μ<sub>i,w</sub>
@@ -133,7 +134,7 @@
             − λ<sub>var</sub> Σ<sub>w</sub> δ<sup>w</sup> [ Σ<sub>i</sub> ( s<sub>i,w</sub> + 3 c<sub>i,w</sub> ) σ²<sub>i,w</sub> ]
             <div class="formula-caption">λ<sub>var</sub> = 0.02. Discount δ is 1.0 today, so five weeks are unweighted. Leftover bank is not in this sum. It is worth 0.</div>
           </div>
-          <p>The square-root mean–SD utility from textbooks is replaced by a linear penalty on variance so the programme stays a MIP. Captain variance is tripled (captain points are an extra copy of the player, so variance scales by 1+3=4 on that extra — the code uses 3 × σ² on the captain variable plus 1 × on the start variable).</p>
+          <p>The square-root mean-SD utility from textbooks is replaced by a linear penalty on variance so the programme stays a MIP. Captain variance is tripled (captain points are an extra copy of the player, so variance scales by 1+3=4 on that extra). The code uses 3 × σ² on the captain variable plus 1 × on the start variable.</p>
         </div>
       </div>
     </section>
@@ -148,7 +149,7 @@
             objective ← objective − 4 · max(0, T − F) + 1.5 · max(0, F − T)
             <div class="formula-caption">F is free transfers. Rolling a free transfer is worth a constant 1.5 points.</div>
           </div>
-          <p>A hit is rejected unless the three-gameweek XI gain versus rolling beats 4 plus a 1.0 margin. Incoming outfielders must start this gameweek (backup keeper excepted). If the “best” T=2 is Wharton to the bench, that plan is delayed — next week’s free transfer can still fetch him after results.</p>
+          <p>A hit is rejected unless the three-gameweek XI gain versus rolling beats 4 plus a 1.0 margin. Incoming outfielders must start this gameweek (backup keeper excepted). If the “best” T=2 is Wharton to the bench, that plan is delayed: next week’s free transfer can still fetch him after results.</p>
           <p>Wildcard rebuilds the 15 at current sell-plus-bank. Free Hit rebuilds this week only, then reverts. Neither is played just because the MIP gap is pretty. See chips.</p>
         </div>
       </div>
@@ -199,11 +200,21 @@
         </div>
       </div>
     </section>
+
+    <section class="section" id="contact">
+      <div class="wrap section-split">
+        <p class="section-num">10</p>
+        <div class="prose">
+          <h2>Questions</h2>
+          <p>This page is the public write-up. If you want more detail, a walkthrough of a letter, or to argue with a call, write to <a href="mailto:support@fpl-manager.com">support@fpl-manager.com</a>. Do not send an FPL password.</p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
     <div class="wrap">
-      <p><a href="subscribe.html">Subscribe</a> · <a href="/">Home</a> · <a href="legal.html">Legal</a></p>
+      <p><a href="subscribe.html">Subscribe</a> · <a href="/">Home</a> · <a href="legal.html">Legal</a> · <a href="mailto:support@fpl-manager.com">support@fpl-manager.com</a></p>
       <p>Unofficial. Print this page if you want the method on paper.</p>
     </div>
   </footer>

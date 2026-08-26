@@ -47,10 +47,10 @@
   var monthRadio = $("#plan-month-label");
   if (seasonRadio) {
     seasonRadio.textContent =
-      "Season " + (cfg.seasonName || "") + " — €" + cfg.season;
+      "Season " + (cfg.seasonName || "") + " · €" + cfg.season;
   }
   if (monthRadio) {
-    monthRadio.textContent = "Monthly — €" + cfg.monthly;
+    monthRadio.textContent = "Monthly · €" + cfg.monthly;
   }
 
   var manage = $("#manage-billing");

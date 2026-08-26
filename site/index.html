@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FPL Manager — FPL team planner &amp; weekly squad letter</title>
+  <title>FPL Manager: FPL team planner and weekly squad letter</title>
   <meta name="description" content="FPL Manager is an unofficial FPL team planner. Each week you get transfers, a starting XI, captain, and chip advice by email. You copy the moves on the official site.">
   <meta name="keywords" content="FPL manager, FPL team planner, FPL team builder, FPL planner, Fantasy Premier League, FPL transfers, FPL captain">
   <link rel="canonical" href="https://fpl-manager.com/">
@@ -15,13 +15,13 @@
   <meta property="og:site_name" content="FPL Manager">
   <meta property="og:locale" content="en_GB">
   <meta property="og:url" content="https://fpl-manager.com/">
-  <meta property="og:title" content="FPL Manager — FPL team planner">
+  <meta property="og:title" content="FPL Manager: FPL team planner">
   <meta property="og:description" content="Weekly FPL team builder: transfers, XI, captain, and chips, emailed before the deadline. Unofficial.">
   <meta property="og:image" content="https://fpl-manager.com/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="FPL Manager — FPL team planner">
+  <meta name="twitter:title" content="FPL Manager: FPL team planner">
   <meta name="twitter:description" content="Weekly FPL transfers, XI, captain, and chips. You still click them in.">
   <meta name="twitter:image" content="https://fpl-manager.com/og.png">
   <link rel="preconnect" href="https://fonts.bunny.net">
@@ -96,6 +96,14 @@
               "@type": "Answer",
               "text": "No. Checkout is on Stripe. The letter uses only your public FPL team ID. You still make every click on the official site."
             }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I ask more about how the bot works?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The method page is the public write-up. For a longer walkthrough of the model or of a letter, email support@fpl-manager.com."
+            }
           }
         ]
       }
@@ -139,9 +147,9 @@
         <div class="prose">
           <p>FPL Manager looks at the public Fantasy Premier League page for <em>your</em> squad, then solves the same problem the game poses: fifteen players, £100m, three from a club, eleven to pick, one captain. It never logs in.</p>
           <ol class="plain">
-            <li>Transfers for this deadline — including whether a −4 hit pays over three gameweeks.</li>
+            <li>Transfers for this deadline, including whether a −4 hit pays over three gameweeks.</li>
             <li>Starting XI, bench order, captain and vice. The armband goes to the starter with the highest expected points this gameweek.</li>
-            <li>Hold or play Triple Captain, Bench Boost, Wildcard, Free Hit — with the numbers behind the call.</li>
+            <li>Hold or play Triple Captain, Bench Boost, Wildcard, Free Hit, with the numbers behind the call.</li>
             <li>Risk notes for anyone starting with a shaky chance of minutes.</li>
           </ol>
           <p class="small">The fifteen that come out of this week’s transfers stay locked for the next five gameweeks in the model.</p>
@@ -153,14 +161,14 @@
       <div class="wrap section-split">
         <p class="section-num">02 / A real letter</p>
         <div>
-          <p class="prose">Gameweek 2, 2026/27. Same engine that writes to a subscriber. Formation 4-4-2, one free transfer. Leftover bank is ignored by the objective — it is worth nothing until you spend it.</p>
+          <p class="prose">Gameweek 2, 2026/27. Same engine that writes to a subscriber. Formation 4-4-2, one free transfer. Leftover bank is ignored by the objective: it is worth nothing until you spend it.</p>
           <div class="letter" aria-label="Sample weekly FPL letter">
             <div class="letter-meta">
               <span>GW2 · Fri 28 Aug 19:30 CEST</span>
               <span>T = 1 · hit = 0</span>
             </div>
             <h3>Cherki → Ndiaye. Fernandes (C).</h3>
-            <p>Cherki’s last outing was a 27-minute cameo. The solver will not pay five-week minutes on that. Ndiaye is modelled as a 90-minute start. Bench: Woodman, Shaw, Mateta, Lavia. Wharton delayed — he would sit this week.</p>
+            <p>Cherki’s last outing was a 27-minute cameo. The solver will not pay five-week minutes on that. Ndiaye is modelled as a 90-minute start. Bench: Woodman, Shaw, Mateta, Lavia. Wharton delayed: he would sit this week.</p>
             <table>
               <thead>
                 <tr><th></th><th>XI</th><th>Fixture</th><th class="right">xP</th></tr>
@@ -187,7 +195,7 @@
         <div class="prose">
           <p>Player points are a Monte Carlo: minutes, Poisson returns, and one shared scoreline per fixture. Clean sheets come from that scoreline. If your team draws a blank, that player cannot be given a goal or an assist in the same world.</p>
           <p>Where the book is liquid, team goal expectancy is blended toward public regular-time Over/Under 0.5 prices. Thin books are ignored.</p>
-          <p>The fifteen and the eleven are a mixed-integer programme: maximise five-week expected starter points, minus a small penalty on variance, subject to FPL’s rules. <a href="method.html">The full write-up is here</a> — objective, hit rule, and chip stopping condition.</p>
+          <p>The fifteen and the eleven are a mixed-integer programme: maximise five-week expected starter points, minus a small penalty on variance, subject to FPL’s rules. <a href="method.html">The full write-up is here</a>: objective, hit rule, and chip stopping condition.</p>
         </div>
       </div>
     </section>
@@ -235,6 +243,10 @@
             <summary>Do I hand over my FPL login?</summary>
             <p>Never. Stripe takes the card. The mailer reads the same public team page anyone can open with your team ID.</p>
           </details>
+          <details>
+            <summary>Can I ask more about how the bot works?</summary>
+            <p>Yes. Start with <a href="method.html">How it chooses</a>. If you want a longer walkthrough of the model or of a letter, write to <a href="mailto:support@fpl-manager.com">support@fpl-manager.com</a>.</p>
+          </details>
         </div>
       </div>
     </section>
@@ -266,6 +278,6 @@
     </div>
   </footer>
   <script src="js/config.js?v=com1"></script>
-  <script src="js/site.js?v=bleed1"></script>
+  <script src="js/site.js?v=copy1"></script>
 </body>
 </html>

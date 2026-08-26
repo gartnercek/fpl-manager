@@ -1,5 +1,5 @@
 /* SITE */
-FPL Manager — unofficial Fantasy Premier League team planner
+FPL Manager · unofficial Fantasy Premier League team planner
 https://fpl-manager.com
 
 /* STACK */
