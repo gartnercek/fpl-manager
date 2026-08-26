@@ -16,7 +16,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=com1">
+  <link rel="stylesheet" href="css/site.css?v=bleed1">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -70,10 +70,12 @@
   </header>
 
   <main id="main">
-    <div class="wrap masthead">
-      <p class="kicker">First intake · paid beta</p>
-      <h1>The number after <span class="num">/entry/</span>.</h1>
-      <p class="lede">That ID is unique for the season. You pay by card on Stripe. There is no FPL login, and nothing is submitted on your behalf.</p>
+    <div class="masthead">
+      <div class="wrap">
+        <p class="kicker">First intake · paid beta</p>
+        <h1>The number after <span class="num">/entry/</span>.</h1>
+        <p class="lede">That ID is unique for the season. You pay by card on Stripe. There is no FPL login, and nothing is submitted on your behalf.</p>
+      </div>
     </div>
 
     <section class="section">
@@ -116,9 +118,6 @@
             <span id="plan-month-label">Monthly — €19</span>
           </label>
 
-          <label for="note">Anything the solver should know (optional)</label>
-          <textarea id="note" name="note" maxlength="500" placeholder="e.g. I never captain a City player on a whim — ignore this, the model will anyway."></textarea>
-
           <label class="check">
             <input id="consent" name="consent" type="checkbox" required>
             <span>Create a Stripe checkout and keep my email and team ID to send the weekly letter. See <a href="legal.html">privacy</a>.</span>
@@ -145,6 +144,6 @@
     </div>
   </footer>
   <script src="js/config.js?v=com1"></script>
-  <script src="js/site.js?v=com1"></script>
+  <script src="js/site.js?v=bleed1"></script>
 </body>
 </html>

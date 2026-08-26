@@ -27,6 +27,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -94,7 +95,7 @@ a:hover {
   background: var(--pl);
   color: #fff;
   border-bottom: none;
-  padding: 0.95rem 0;
+  padding: 0.95rem 0 0.2rem;
 }
 
 .site-header .wrap {
@@ -215,9 +216,10 @@ p {
 }
 
 .masthead {
+  width: 100%;
   background: var(--pl);
   color: #fff;
-  padding: 3.2rem 0 2.8rem;
+  padding: 2.4rem 0 2.8rem;
   border-bottom: 4px solid var(--green);
 }
 

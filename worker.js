@@ -24,7 +24,13 @@ function methodNotAllowed() {
 
 export default {
   async fetch(request, env, ctx) {
-    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    const url = new URL(request.url);
+    if (url.hostname === "www.fpl-manager.com") {
+      url.hostname = "fpl-manager.com";
+      return Response.redirect(url.toString(), 301);
+    }
+
+    const path = url.pathname.replace(/\/+$/, "") || "/";
     const c = pagesCtx(request, env, ctx);
 
     if (path === "/api/checkout") {

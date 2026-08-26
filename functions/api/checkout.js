@@ -54,7 +54,6 @@ export async function onRequestPost({ request, env }) {
   const teamId = String(body.team_id || "").trim();
   const plan = body.plan === "monthly" ? "monthly" : "season";
   const name = String(body.name || "").trim().slice(0, 80);
-  const note = String(body.note || "").trim().slice(0, 450);
   const season = env.STRIPE_SEASON || "2026/27";
 
   if (!EMAIL_RE.test(email)) return json({ error: "Need a working email." }, 400);
@@ -92,7 +91,6 @@ export async function onRequestPost({ request, env }) {
   params.set("metadata[plan]", plan);
   params.set("metadata[season]", season);
   if (name) params.set("metadata[name]", name);
-  if (note) params.set("metadata[note]", note);
   params.set(
     "custom_text[submit][message]",
     "Unofficial FPL advice. You still make the clicks on the official site."

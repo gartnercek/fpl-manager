@@ -168,7 +168,6 @@
 
     var plan = ($("input[name='plan']:checked") || {}).value || "season";
     var name = ($("#name") && $("#name").value) || "";
-    var note = ($("#note") && $("#note").value) || "";
 
     ev.preventDefault();
     if (submitBtn) submitBtn.disabled = true;
@@ -180,7 +179,6 @@
       team_id: id,
       plan: plan,
       name: name,
-      note: note,
       consent: true,
     };
 

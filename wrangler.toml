@@ -1,12 +1,22 @@
 # Worker + static assets. Deploy: npx wrangler deploy
-# (wrangler pages deploy needs a Pages-scoped API token; Workers CI tokens often lack that.)
-name = "fpl-manager"
+# Cloudflare Workers Builds project is fpl-manager2 (not Pages).
+name = "fpl-manager2"
 main = "worker.js"
 compatibility_date = "2025-08-15"
 account_id = "4ca0f1d6e68a3390a3aad288ac62a887"
+workers_dev = true
 
 [assets]
 directory = "site"
 binding = "ASSETS"
 not_found_handling = "404-page"
 run_worker_first = true
+
+# Attach the registrar zone to this Worker. Do not add these on Pages.
+[[routes]]
+pattern = "fpl-manager.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.fpl-manager.com"
+custom_domain = true
