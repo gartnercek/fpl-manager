@@ -8,6 +8,10 @@ function paymentsOpen(env) {
   return env.PAYMENTS_OPEN === "1" || env.PAYMENTS_OPEN === "true";
 }
 
+function managedPayments(env) {
+  return env.STRIPE_MANAGED_PAYMENTS !== "0" && env.STRIPE_MANAGED_PAYMENTS !== "false";
+}
+
 export async function onRequestGet({ env }) {
   const open = paymentsOpen(env);
   const keys = Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_SEASON && env.STRIPE_PRICE_MONTHLY);
@@ -15,6 +19,7 @@ export async function onRequestGet({ env }) {
     ok: true,
     configured: keys && open,
     payments_open: open,
+    managed_payments: managedPayments(env),
     beta: !open,
   });
 }
@@ -46,7 +51,7 @@ async function findOrCreateCustomer(secret, { email, name, teamId, plan, season 
 export async function onRequestPost({ request, env }) {
   if (!paymentsOpen(env)) {
     return json(
-      { error: "Payments are not open. Join the free beta instead.", beta: true },
+      { error: "Payments are not open yet. Finish Stripe account details, then set PAYMENTS_OPEN." },
       503
     );
   }
@@ -88,6 +93,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const origin = publicOrigin(request, env);
+  const useManaged = managedPayments(env);
   const params = new URLSearchParams();
   const monthly = plan === "monthly";
   params.set("mode", monthly ? "subscription" : "payment");
@@ -99,7 +105,7 @@ export async function onRequestPost({ request, env }) {
   params.set("cancel_url", origin + "/subscribe.html?cancelled=1");
   params.set("allow_promotion_codes", "true");
   params.set("billing_address_collection", "required");
-  params.set("managed_payments[enabled]", "false");
+  params.set("managed_payments[enabled]", useManaged ? "true" : "false");
   params.set("integration_identifier", INTEGRATION_ID);
   params.set("metadata[team_id]", teamId);
   params.set("metadata[plan]", plan);
@@ -118,10 +124,15 @@ export async function onRequestPost({ request, env }) {
     params.set("payment_intent_data[metadata][team_id]", teamId);
     params.set("payment_intent_data[metadata][plan]", "season");
     params.set("payment_intent_data[metadata][season]", season);
-    params.set("invoice_creation[enabled]", "true");
+    if (!useManaged) params.set("invoice_creation[enabled]", "true");
   }
 
-  if (env.STRIPE_AUTOMATIC_TAX === "1" || env.STRIPE_AUTOMATIC_TAX === "true") {
+  // Managed Payments collects name and address itself. customer_update is rejected
+  // on those sessions. Do not enable Stripe Tax automatic_tax without a registration.
+  if (
+    !useManaged &&
+    (env.STRIPE_AUTOMATIC_TAX === "1" || env.STRIPE_AUTOMATIC_TAX === "true")
+  ) {
     params.set("automatic_tax[enabled]", "true");
     params.set("customer_update[address]", "auto");
     params.set("customer_update[name]", "auto");

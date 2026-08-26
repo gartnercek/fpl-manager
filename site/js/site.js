@@ -107,22 +107,24 @@
   var checkoutPath = cfg.checkoutPath || "/api/checkout";
   var betaPath = cfg.betaPath || "/api/beta";
   var paymentsOpen = false;
+  var useBeta = Boolean(cfg.beta);
 
   if (new URLSearchParams(location.search).get("cancelled") === "1" && status) {
     status.className = "alert show";
     status.textContent = "Checkout closed without a payment. Nothing was charged.";
   }
 
-  fetch(betaPath, { method: "GET" })
+  fetch(checkoutPath, { method: "GET" })
     .then(function (r) {
       return r.ok ? r.json() : null;
     })
     .then(function (info) {
       if (info && info.payments_open) {
         paymentsOpen = true;
-        if (submitBtn) submitBtn.textContent = "Continue to payment";
-      } else if (submitBtn) {
-        submitBtn.textContent = "Join the free beta";
+        useBeta = false;
+      }
+      if (submitBtn) {
+        submitBtn.textContent = paymentsOpen || !cfg.beta ? "Continue to payment" : "Join the free beta";
       }
     })
     .catch(function () {});
@@ -150,7 +152,7 @@
     status.className = "alert show ok";
     status.textContent = updated
       ? "Updated. Same email, new team ID. The next deadline letter uses that squad."
-      : "You’re on the free beta. No card was taken. The weekly letter uses this email and team ID. We will write before paid plans open.";
+      : "You’re on the free beta. No card was taken. The weekly letter uses this email and team ID.";
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = "Joined";
@@ -192,7 +194,7 @@
     };
     if (hp && hp.value) payload._gotcha = hp.value;
 
-    if (!paymentsOpen) {
+    if (useBeta && !paymentsOpen) {
       fetch(betaPath, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -212,10 +214,10 @@
             showBetaOk(res.data.updated);
             return;
           }
-          fail((res.data && res.data.error) || "Could not join the beta. Try again in a moment.");
+          fail((res.data && res.data.error) || "Could not join the list. Try again in a moment.");
         })
         .catch(function () {
-          fail("Could not reach the beta list. Try again in a moment.");
+          fail("Could not reach the list. Try again in a moment.");
         });
       return;
     }
@@ -246,7 +248,7 @@
         }
         fail(
           (res.data && res.data.error) ||
-            "Checkout is not live yet. Join the free beta, or set Stripe when payments open."
+            "Checkout is not live yet. Finish Stripe setup, then try again."
         );
       })
       .catch(function () {

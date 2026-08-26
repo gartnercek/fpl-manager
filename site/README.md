@@ -44,48 +44,42 @@ npx wrangler pages dev site
 
 ## 2. Stripe (test, then live)
 
-Run `python scripts/bootstrap_stripe.py` with a **test** secret. It creates season (€79) and monthly (€19) Prices, sets the account website and payout statement descriptor to FPL Manager, and points the Customer Portal at `https://fpl-manager.com/thanks.html`.
+Run `python scripts/bootstrap_stripe.py` with a **test** secret. It creates season (€50) and monthly (€10) Prices with tax code `txcd_10103000` (SaaS, personal use), sets the account website and payout statement descriptor to FPL Manager, and points the Customer Portal at `https://fpl-manager.com/thanks.html`.
 
 Dashboard (test, then repeat in live):
 
 1. [Customer portal](https://dashboard.stripe.com/settings/billing/portal) — confirm return URL `https://fpl-manager.com/thanks.html`, privacy and terms `https://fpl-manager.com/legal.html`.
 2. [Branding](https://dashboard.stripe.com/settings/branding) — public business URL `https://fpl-manager.com`.
 3. [Payouts](https://dashboard.stripe.com/settings/payouts) — bank account and statement descriptor `FPLMANAGER`.
-4. [Revenue recovery](https://dashboard.stripe.com/settings/billing/automatic) — Smart Retries and failed-payment emails on.
-5. Developers → **Webhooks** → `https://fpl-manager.com/api/stripe-webhook`  
+4. [Managed Payments](https://dashboard.stripe.com/settings/managed-payments) — enable after business details and VAT are in. Checkout sets `managed_payments[enabled]=true`.
+5. [Revenue recovery](https://dashboard.stripe.com/settings/billing/automatic) — Smart Retries and failed-payment emails on.
+6. Developers → **Webhooks** → `https://fpl-manager.com/api/stripe-webhook`  
    Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`.
-6. Prefer a [restricted key](https://docs.stripe.com/keys/restricted-api-keys) (`rk_…`). Live keys only after a test payment on this domain works.
+7. Prefer a [restricted key](https://docs.stripe.com/keys/restricted-api-keys) (`rk_…`). Live keys only after a test payment on this domain works.
 
-Cloudflare Pages → **Settings** → **Environment variables** (Production):
+Live catalog (FPL_Manager):
+
+| Plan | Price ID | Amount |
+|---|---|---|
+| Season 2026/27 | `price_1U8lpoAoVac84U9IFNdW9zDc` | €50 one-time, tax inclusive |
+| Monthly | `price_1U8lpoAoVac84U9IgSs9qRmz` | €10 / month, tax inclusive |
+
+Those IDs are also in `wrangler.toml` `[vars]`. Worker secrets:
 
 | Variable | Value |
 |---|---|
 | `STRIPE_SECRET_KEY` | `rk_test_…` then live after a test payment |
-| `STRIPE_PRICE_SEASON` | `price_…` one-time €79 |
-| `STRIPE_PRICE_MONTHLY` | `price_…` recurring €19 |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_…` |
-| `STRIPE_SEASON` | `2026/27` |
-| `STRIPE_AUTOMATIC_TAX` | `0` unless Stripe Tax is registered |
-| `SITE_ORIGIN` | `https://fpl-manager.com` |
+| `PAYMENTS_OPEN` | `1` only when the account can charge |
+
+Do not enable `STRIPE_AUTOMATIC_TAX=1` while Managed Payments is on. Managed Payments handles customer VAT. Set `STRIPE_MANAGED_PAYMENTS=0` only to turn that off.
 
 GitHub Actions secret `STRIPE_SECRET_KEY` (restricted read is enough) so the weekly job can list who paid.
 
-Do not enable `STRIPE_AUTOMATIC_TAX=1` until an active tax registration exists. See [collect taxes for recurring payments](https://docs.stripe.com/billing/taxes/collect-taxes).
-
 ## 3. What the form does
 
-**Now:** the form is a **free beta**. It posts `{ email, team_id, plan }` to `/api/beta`. No Stripe checkout. `plan` is a preference for the later paid rollout (season €79 / monthly €19). Cap is 50 signups.
+The form posts `{ email, team_id, plan, name, consent }` to `/api/checkout`. Stripe Checkout collects the card (Managed Payments). Success returns to `https://fpl-manager.com/thanks.html?session_id=…`. **Manage billing** opens the Customer Portal.
 
-Create KV, then uncomment the binding in `wrangler.toml`:
+Do **not** set `PAYMENTS_OPEN=1` until Stripe can charge (business details in, cards active). Until then the page still looks like a payment form; submit returns an error.
 
-```bash
-npx wrangler kv namespace create BETA_SIGNUPS
-```
-
-Worker secrets: `BETA_EXPORT_SECRET` (random string). Do **not** set `PAYMENTS_OPEN=1` until you are ready to take cards.
-
-GitHub Actions (weekly mailer): `BETA_LIST_URL=https://fpl-manager.com/api/beta` (variable) and the same `BETA_EXPORT_SECRET` (secret). Without KV, join returns an error on the page.
-
-**Later:** set `PAYMENTS_OPEN=1` on the Worker. The form switches to `/api/checkout`. Stripe Checkout collects the card. Success returns to `https://fpl-manager.com/thanks.html?session_id=…`. **Manage billing** opens the Customer Portal.
-
-The weekly job lists beta signups, then (when billing is on) active Stripe subscriptions plus paid season Checkout Sessions for `2026/27`, then emails each public FPL team ID.
+`/api/beta` remains for the existing free-list export. The weekly job lists beta signups, then active Stripe subscriptions plus paid season Checkout Sessions for `2026/27`, then emails each public FPL team ID.

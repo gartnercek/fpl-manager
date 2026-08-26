@@ -1,10 +1,10 @@
 window.FPL_SITE = {
   contactEmail: "support@fpl-manager.com",
   currency: "EUR",
-  monthly: 19,
-  season: 79,
+  monthly: 10,
+  season: 50,
   seasonName: "2026/27",
-  beta: true,
+  beta: false,
   betaPath: "/api/beta",
   checkoutPath: "/api/checkout",
   paymentLinkSeason: "",

@@ -3,55 +3,46 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Free beta · FPL Manager team planner</title>
-  <meta name="description" content="Join the free FPL Manager beta. Weekly transfers, XI, captain, and chips by email. No card. Paid season and monthly plans will open later.">
+  <title>Subscribe · FPL Manager team planner</title>
+  <meta name="description" content="Pay for FPL Manager. Season €50 for 2026/27 or €10 a month. Weekly transfers, XI, captain, and chips by email. No FPL password.">
   <link rel="canonical" href="https://fpl-manager.com/subscribe.html">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <meta name="theme-color" content="#37003C">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://fpl-manager.com/subscribe.html">
-  <meta property="og:title" content="Free beta · FPL Manager">
-  <meta property="og:description" content="Free weekly FPL letter while billing is closed. Paid plans come later. No FPL password.">
+  <meta property="og:title" content="Subscribe · FPL Manager">
+  <meta property="og:description" content="€50 for the 2026/27 season or €10 a month. Weekly FPL letter. You still click on the official site.">
   <meta property="og:image" content="https://fpl-manager.com/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.bunny.net">
   <link href="https://fonts.bunny.net/css?family=fraunces:400,500,600,700,italic|ibm-plex-sans:400,500,600|ibm-plex-mono:400,500&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=beta1">
+  <link rel="stylesheet" href="css/site.css?v=pay1">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "FPL Manager weekly letter",
-    "description": "Unofficial Fantasy Premier League team planner. Free beta now; paid season and monthly plans later.",
+    "description": "Unofficial Fantasy Premier League team planner. Season pass or monthly subscription.",
     "brand": { "@type": "Brand", "name": "FPL Manager" },
     "url": "https://fpl-manager.com/subscribe.html",
     "offers": [
       {
         "@type": "Offer",
-        "name": "Free beta",
-        "price": "0",
-        "priceCurrency": "EUR",
-        "availability": "https://schema.org/LimitedAvailability",
-        "url": "https://fpl-manager.com/subscribe.html",
-        "description": "Weekly letter at no charge while the beta is open. No card."
-      },
-      {
-        "@type": "Offer",
         "name": "Season 2026/27",
-        "price": "79.00",
+        "price": "50.00",
         "priceCurrency": "EUR",
-        "availability": "https://schema.org/PreOrder",
+        "availability": "https://schema.org/InStock",
         "url": "https://fpl-manager.com/subscribe.html",
-        "description": "Paid season pass. Not on sale yet. We email before charging."
+        "description": "One payment for every 2026/27 deadline letter. Does not auto-renew."
       },
       {
         "@type": "Offer",
         "name": "Monthly",
-        "price": "19.00",
+        "price": "10.00",
         "priceCurrency": "EUR",
-        "availability": "https://schema.org/PreOrder",
+        "availability": "https://schema.org/InStock",
         "url": "https://fpl-manager.com/subscribe.html",
-        "description": "Paid monthly plan. Not on sale yet."
+        "description": "€10 per month. Renews until you cancel."
       }
     ]
   }
@@ -68,7 +59,7 @@
       <nav aria-label="Primary">
         <a href="/">Home</a>
         <a href="method.html">How it chooses</a>
-        <a href="subscribe.html" aria-current="page">Join beta</a>
+        <a href="subscribe.html" aria-current="page">Subscribe</a>
         <a href="legal.html">Legal</a>
       </nav>
     </div>
@@ -77,9 +68,9 @@
   <main id="main">
     <div class="masthead">
       <div class="wrap">
-        <p class="kicker">Free beta · paid plans later</p>
-        <h1>The number after <span class="num">/entry/</span>.</h1>
-        <p class="lede">Join the free list. You get the weekly letter. There is no card today. When paid subscriptions open we will email you first. Nothing is charged until then. There is no FPL login, and nothing is submitted on your behalf.</p>
+        <p class="kicker">Season 2026/27 · pay on Stripe</p>
+        <h1>Pick a plan. Then the number after <span class="num">/entry/</span>.</h1>
+        <p class="lede">Season is €50 once for 2026/27. Monthly is €10 and renews until you cancel. Checkout is hosted by Stripe. Those prices include tax where it applies. There is no FPL login, and nothing is submitted on your behalf.</p>
       </div>
     </div>
 
@@ -97,7 +88,7 @@
     <section class="section">
       <div class="wrap">
         <form id="subscribe-form" class="form-narrow" method="POST" action="#">
-          <input type="hidden" name="_subject" value="FPL Manager free beta">
+          <input type="hidden" name="_subject" value="FPL Manager subscribe">
           <p class="hp" aria-hidden="true">
             <label for="company">Company</label>
             <input id="company" type="text" name="_gotcha" tabindex="-1" autocomplete="off">
@@ -107,31 +98,31 @@
 
           <label for="email">Email</label>
           <input id="email" name="email" type="email" autocomplete="email" required>
-          <span class="hint">Where the weekly letter goes. We will use the same address when paid plans open.</span>
+          <span class="hint">Where the weekly letter goes. Same address Stripe uses for the receipt.</span>
 
           <label for="team-id">FPL team ID</label>
           <input id="team-id" name="team_id" type="text" inputmode="numeric" autocomplete="off" required placeholder="1234567 or paste the entry URL">
           <span class="hint">Public data only. Same ID anyone can see on a mini-league page.</span>
 
-          <p class="plan-pick-label" id="plan-pick-label">If you pay later (not charged now)</p>
+          <p class="plan-pick-label" id="plan-pick-label">Payment plan</p>
           <div class="price-grid plan-pick" role="radiogroup" aria-labelledby="plan-pick-label">
             <button type="button" class="price-card preferred" data-plan="season" aria-pressed="true">
-              <p class="pill">Later</p>
+              <p class="pill">One payment</p>
               <h3>Season</h3>
-              <p class="price-amt" id="price-season">€79 <span>/ 2026/27</span></p>
+              <p class="price-amt" id="price-season">€50 <span>/ 2026/27</span></p>
             </button>
             <button type="button" class="price-card" data-plan="monthly" aria-pressed="false">
-              <p class="pill">Later</p>
+              <p class="pill">Cancel any time</p>
               <h3>Monthly</h3>
-              <p class="price-amt" id="price-month">€19 <span>/ month</span></p>
+              <p class="price-amt" id="price-month">€10 <span>/ month</span></p>
             </button>
           </div>
-          <p class="hint">A preference only. Checkout is closed. Season is a one-time €79 for 2026/27. Monthly is €19 and would renew until you cancel.</p>
+          <p class="hint">Season is a one-time €50 for 2026/27 and does not roll into next season. Monthly is €10 and renews until you cancel from Stripe.</p>
           <input type="hidden" name="plan" id="plan-value" value="season">
 
           <label class="check">
             <input id="consent" name="consent" type="checkbox" required>
-            <span>Keep my email and team ID to send the free weekly letter. You may email me when paid plans open. I can leave any time. See <a href="legal.html">privacy</a>.</span>
+            <span>Keep my email and team ID to send the weekly letter and to run Stripe checkout. I can cancel or ask for a delete. See <a href="legal.html">privacy</a>.</span>
           </label>
           <label class="check">
             <input id="unofficial" name="unofficial" type="checkbox" required>
@@ -139,10 +130,10 @@
           </label>
 
           <p style="margin-top:1.2rem">
-            <button class="btn" type="submit">Join the free beta</button>
+            <button class="btn" type="submit">Continue to payment</button>
           </p>
           <p id="form-status" class="alert" role="status"></p>
-          <p class="small">No card. Do not paste an FPL password.</p>
+          <p class="small">Card details stay with Stripe. Do not paste an FPL password.</p>
         </form>
       </div>
     </section>
@@ -154,7 +145,7 @@
       <p>Unofficial Fantasy Premier League advice.</p>
     </div>
   </footer>
-  <script src="js/config.js?v=beta1"></script>
-  <script src="js/site.js?v=beta1"></script>
+  <script src="js/config.js?v=pay1"></script>
+  <script src="js/site.js?v=pay1"></script>
 </body>
 </html>
