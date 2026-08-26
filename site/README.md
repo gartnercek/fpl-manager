@@ -8,15 +8,15 @@ Static HTML plus Cloudflare Pages Functions at the **repo root** (`functions/`).
 
 This is **not** a Hugo site and **not** a Python app. The public files are already in `site/`.
 
-In the Pages (or Workers) project → **Settings** → **Build**:
+In the project → **Settings** → **Build**. Do **not** type the word `empty` into any box — Cloudflare will try to run a program named `empty` and fail.
 
 | Setting | Value |
 |---|---|
 | Framework preset | None |
-| Build command | empty (or `npm run build`, which is a no-op) |
-| Deploy command | empty on Pages. Do not use a command that lets Wrangler invent Hugo |
+| Build command | leave the box **blank**. If it refuses to save, use `true` |
+| Deploy command | `npx wrangler pages deploy site --project-name=fpl-manager` |
 | Build output directory | `site` |
-| Root directory | empty |
+| Root directory | leave **blank** |
 
 If Cloudflare still runs `pip install .`, add env var `SKIP_DEPENDENCY_INSTALL` = `true` (the Python package is for the weekly mailer, not the website).
 
