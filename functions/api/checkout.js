@@ -14,11 +14,14 @@ function managedPayments(env) {
 
 export async function onRequestGet({ env }) {
   const open = paymentsOpen(env);
-  const keys = Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_SEASON && env.STRIPE_PRICE_MONTHLY);
+  const hasStripeKey = Boolean(env.STRIPE_SECRET_KEY);
+  const hasPrices = Boolean(env.STRIPE_PRICE_SEASON && env.STRIPE_PRICE_MONTHLY);
   return json({
     ok: true,
-    configured: keys && open,
+    configured: hasStripeKey && hasPrices && open,
     payments_open: open,
+    has_stripe_key: hasStripeKey,
+    has_prices: hasPrices,
     managed_payments: managedPayments(env),
     beta: !open,
   });
@@ -59,7 +62,20 @@ export async function onRequestPost({ request, env }) {
   const priceSeason = env.STRIPE_PRICE_SEASON;
   const priceMonthly = env.STRIPE_PRICE_MONTHLY;
   if (!secret || !priceSeason || !priceMonthly) {
-    return json({ error: "Checkout is not configured yet." }, 503);
+    const missing = [];
+    if (!secret) missing.push("STRIPE_SECRET_KEY");
+    if (!priceSeason) missing.push("STRIPE_PRICE_SEASON");
+    if (!priceMonthly) missing.push("STRIPE_PRICE_MONTHLY");
+    return json(
+      {
+        error:
+          "Checkout is not configured yet. Add " +
+          missing.join(" and ") +
+          " on the Cloudflare Worker.",
+        missing,
+      },
+      503
+    );
   }
 
   let body;
