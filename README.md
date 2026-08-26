@@ -49,6 +49,8 @@ diff against *your* current 15.
 
 Marketing pages live in `site/` and are meant to ship at [fpl-manager.com](https://fpl-manager.com). Card checkout is a Cloudflare Pages Function (`/api/checkout`) plus Stripe. The weekly GitHub Action reads who paid and emails each team. See `site/README.md` for DNS, Search Console, and the Stripe checklist.
 
+The public GW letter is [fpl-manager.com/letter.html](https://fpl-manager.com/letter.html). Paste-ready X, Reddit, Scout, and email copy lives in `launch/TONIGHT.md`.
+
 ## Where email details go
 
 Do **not** put your Gmail password in `config.yaml` or commit it. GitHub Actions reads secrets.
