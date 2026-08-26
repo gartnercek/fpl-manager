@@ -14,7 +14,7 @@ In the project → **Settings** → **Build**. Do **not** type the word `empty` 
 |---|---|
 | Framework preset | None |
 | Build command | leave the box **blank**. If it refuses to save, use `true` |
-| Deploy command | `npx wrangler pages deploy site --project-name=fpl-manager` |
+| Deploy command | `npx wrangler deploy` |
 | Build output directory | `site` |
 | Root directory | leave **blank** |
 

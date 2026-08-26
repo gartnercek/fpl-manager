@@ -1,5 +1,12 @@
-# Static Cloudflare Pages site. HTML lives in site/, Functions in functions/.
-# Deploy with: npx wrangler pages deploy site --project-name=fpl-manager
+# Worker + static assets. Deploy: npx wrangler deploy
+# (wrangler pages deploy needs a Pages-scoped API token; Workers CI tokens often lack that.)
 name = "fpl-manager"
+main = "worker.js"
 compatibility_date = "2025-08-15"
-pages_build_output_dir = "site"
+account_id = "4ca0f1d6e68a3390a3aad288ac62a887"
+
+[assets]
+directory = "site"
+binding = "ASSETS"
+not_found_handling = "404-page"
+run_worker_first = true
