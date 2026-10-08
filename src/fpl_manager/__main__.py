@@ -7,6 +7,7 @@ import traceback
 from typing import Any
 
 from fpl_manager.config import load_config
+from fpl_manager.api import FPLUnavailable
 from fpl_manager.pipeline import SquadError, build_predictions, letter_for_team, run_pipeline
 from fpl_manager.report import send_email, smtp_connection
 from fpl_manager.schedule import decide_run
@@ -58,9 +59,26 @@ def _run_one_print(cfg: dict[str, Any], args: argparse.Namespace) -> int:
     return 0
 
 
+def _fail_line(team_id: int, exc: BaseException) -> str:
+    if isinstance(exc, FPLUnavailable):
+        return (
+            f"team {team_id}: FPL API unavailable ({exc}). No letter sent. "
+            "A squad edit after the first email cannot cause this. The public picks page was not read."
+        )
+    text = str(exc).strip() or exc.__class__.__name__
+    if "PuLP" in text or "LpVariable" in text:
+        return f"team {team_id}: {text}"
+    return f"team {team_id}: {exc.__class__.__name__}: {text}"
+
+
 def _run_mail(cfg: dict[str, Any], args: argparse.Namespace) -> int:
     try:
         shared = build_predictions(cfg, fetch_summaries=args.fetch_summaries)
+    except FPLUnavailable as exc:
+        msg = f"FPL API unavailable before any letter ({exc}). No email sent."
+        print(msg, file=sys.stderr)
+        _notify_operator("FPL manager skipped", msg)
+        return 1
     except Exception:
         _notify_operator("FPL manager FAILED", traceback.format_exc())
         raise
@@ -127,12 +145,17 @@ def _run_mail(cfg: dict[str, Any], args: argparse.Namespace) -> int:
                     msg = str(exc)
                     lines.append(msg)
                     print(msg, file=sys.stderr)
-                except Exception:
+                except FPLUnavailable as exc:
                     errors += 1
-                    detail = traceback.format_exc()
-                    lines.append(f"team {sub.team_id}:\n{detail}")
-                    print(f"error team {sub.team_id}", file=sys.stderr)
-                    print(detail, file=sys.stderr)
+                    msg = _fail_line(sub.team_id, exc)
+                    lines.append(msg)
+                    print(msg, file=sys.stderr)
+                except Exception as exc:
+                    errors += 1
+                    msg = _fail_line(sub.team_id, exc)
+                    lines.append(msg)
+                    print(msg, file=sys.stderr)
+                    print(traceback.format_exc(), file=sys.stderr)
     except Exception:
         _notify_operator("FPL manager FAILED", traceback.format_exc())
         raise

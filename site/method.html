@@ -79,8 +79,8 @@
         <p class="section-num">02</p>
         <div class="prose">
           <h2>Minutes</h2>
-          <p>Appearance points sit on the 60-minute cliff, so minutes are modelled first. Last six matches are exponentially weighted with half-life 3. That produces P(start), P(cameo), and expected minutes in each bucket. Injured / suspended / unavailable goes to zero. “Doubtful” is scaled by FPL’s published chance of playing next round.</p>
-          <p>Summer signings keep last season’s minutes only as a weak prior. A 27-minute outing stays in the cameo bucket; eighty minutes is a start.</p>
+          <p>Appearance points sit on the 60-minute cliff, so minutes are modelled first. The weekly run uses this season’s minutes and starts, not a separate last-season file. Until about ten games, start probability stays near the price and ownership prior. A 27-minute cameo does not wipe that. Injured / suspended / unavailable goes to zero. “Doubtful” is scaled by FPL’s published chance of playing next round.</p>
+          <p>A new signing needs more minutes before that prior lets go. Eighty minutes is one start in the season total, not proof they are nailed.</p>
         </div>
       </div>
     </section>
@@ -150,7 +150,7 @@
             objective ← objective − 4 · max(0, T − F) + 1.5 · max(0, F − T)
             <div class="formula-caption">F is free transfers. Rolling a free transfer is worth a constant 1.5 points.</div>
           </div>
-          <p>A hit is rejected unless the three-gameweek XI gain versus rolling beats 4 plus a 1.0 margin. Incoming outfielders must start this gameweek (backup keeper excepted). If the “best” T=2 is Wharton to the bench, that plan is delayed: next week’s free transfer can still fetch him after results.</p>
+          <p>A hit is rejected unless the three-gameweek XI gain versus rolling beats 4 plus a 4.0 margin. Incoming outfielders must start this gameweek (backup keeper excepted). If the “best” T=2 is Wharton to the bench, that plan is delayed: next week’s free transfer can still fetch him after results.</p>
           <p>Wildcard rebuilds the 15 at current sell-plus-bank. Free Hit rebuilds this week only, then reverts. Neither is played just because the MIP gap is pretty. See chips.</p>
         </div>
       </div>

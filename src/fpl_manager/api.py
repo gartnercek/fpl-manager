@@ -18,6 +18,10 @@ USER_AGENT = (
 )
 
 
+class FPLUnavailable(RuntimeError):
+    """FPL did not answer. Distinct from a bad squad or a solver bug."""
+
+
 class FPLClient:
     """Read-only FPL JSON API with disk cache and retries."""
 
@@ -27,8 +31,8 @@ class FPLClient:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.session = session or requests.Session()
         retry = Retry(
-            total=3,
-            backoff_factor=0.6,
+            total=5,
+            backoff_factor=1.2,
             status_forcelist=(429, 500, 502, 503, 504),
             allowed_methods=("GET",),
         )
@@ -46,8 +50,16 @@ class FPLClient:
         if use_cache and cache_path.exists():
             return json.loads(cache_path.read_text(encoding="utf-8"))
         url = f"{BASE_URL}/{path.lstrip('/')}"
-        response = self.session.get(url, timeout=30)
-        response.raise_for_status()
+        try:
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else 0
+            if status in (429, 500, 502, 503, 504):
+                raise FPLUnavailable(f"{path} (HTTP {status})") from exc
+            raise
+        except requests.RequestException as exc:
+            raise FPLUnavailable(f"{path} ({exc.__class__.__name__})") from exc
         data = response.json()
         cache_path.write_text(json.dumps(data), encoding="utf-8")
         return data

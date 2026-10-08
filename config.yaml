@@ -5,13 +5,15 @@ team_id: 4846735
 # Squad is chosen on this many upcoming gameweeks (XI + captain re-picked each week).
 horizon_gws: 5
 horizon_discount: 1.0
-# Blend FPL's own ep_next into GW1 xP only (news/minutes they see, we don't).
-ep_next_blend: 0.35
+# Blend FPL's own ep_next into this gameweek only. Kept small: it is a short-horizon
+# number, and a large weight makes the captain and the hit test chase one week.
+ep_next_blend: 0.15
 simulate_draws: 1200
 
 lambda_risk: 0.15
 lambda_var: 0.02
-hit_margin: 1.0
+# A -4 must beat rolling by this many extra points over 3 gameweeks, on top of the 4.
+hit_margin: 4.0
 free_transfer_future_value: 1.5
 wildcard_gap_threshold: 12.0
 free_hit_gap_threshold: 8.0
@@ -29,7 +31,8 @@ set_pieces:
   historical_fk_xg90: 0.03
 
 form:
-  points_slope: 0.08
+  # Points form is a few games of luck. A shallow slope stops a hot week rewriting xG.
+  points_slope: 0.04
   recent_xg_weight: 0.45
 
 minutes:

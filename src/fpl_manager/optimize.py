@@ -99,6 +99,12 @@ def sell_price(purchase: int, now: int) -> int:
 
 
 def _solver():
+    major = int(str(getattr(pulp, "__version__", "0")).split(".", 1)[0] or "0")
+    if major >= 4:
+        raise RuntimeError(
+            f"PuLP {pulp.__version__} removed LpVariable(cat=...). "
+            "This project needs pulp<4. No squad was solved."
+        )
     return pulp.PULP_CBC_CMD(msg=False, timeLimit=SOLVER_TIME, options=["randomSeed", "1"])
 
 

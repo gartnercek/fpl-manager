@@ -172,16 +172,19 @@ def estimate_minutes(
     market.p_ge60 = market.p_start
     market.p_1_59 = market.p_cameo
 
+    # FPL's minutes/starts fields are this season only. Before ~10 games they are
+    # a coin flip. Keep the price and ownership prior until the sample is large,
+    # so one cameo cannot zero a player the pre-season prior still rates.
+    prior = _mix(price, market, 0.45)
     if season.p_play <= 0:
-        mixed = _mix(price, market, 0.45)
-        return _apply_avail(mixed, avail)
+        return _apply_avail(prior, avail)
 
+    full = float(mins_cfg.get("full_sample_minutes", 900))
+    need = full
     if is_summer_signing(player, cutoff):
-        # Last season was a different club. Do not treat those starts as nailed here.
-        club = _mix(price, season, last_w)
-        mixed = _mix(club, market, 0.35)
-        return _apply_avail(mixed, avail)
-
-    # Same club: last-season minutes dominate, market can lift obvious nailed players.
-    mixed = _mix(season, market, 0.20)
+        # A new club has no separate last-season feed. Ask for more minutes
+        # before this season's start rate replaces the price prior.
+        need = full / max(float(np.clip(last_w, 0.05, 1.0)), 0.05)
+    trust = float(np.clip(_f(player.get("minutes")) / need, 0.0, 1.0)) if need > 0 else 1.0
+    mixed = _mix(prior, season, trust)
     return _apply_avail(mixed, avail)

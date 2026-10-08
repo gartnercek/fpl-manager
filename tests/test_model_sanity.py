@@ -137,7 +137,7 @@ def test_estimate_minutes_ewma_prefers_recent():
     assert est.p_play <= 1.0
 
 
-def test_summer_signing_has_lower_start_probability_than_stayer():
+def test_summer_signing_with_no_minutes_is_not_treated_as_nailed():
     cfg = _cfg()
     stayer = _player(team_join_date="2024-07-01", selected_by_percent="6.0")
     mover = _player(
@@ -145,13 +145,15 @@ def test_summer_signing_has_lower_start_probability_than_stayer():
         web_name="Mover",
         team_join_date="2026-07-20",
         selected_by_percent="6.0",
+        minutes=0,
+        starts=0,
     )
     a = estimate_minutes(stayer, None, cfg)
     b = estimate_minutes(mover, None, cfg)
     assert b.p_start < a.p_start - 0.08
 
 
-def test_eighty_minute_start_counts_as_a_start():
+def test_one_start_does_not_nail_a_player():
     player = _player(
         minutes=80,
         starts=1,
@@ -161,7 +163,31 @@ def test_eighty_minute_start_counts_as_a_start():
         expected_goals_per_90=0.05,
     )
     est = estimate_minutes(player, None, _cfg())
-    assert est.p_start > 0.85
+    assert 0.40 < est.p_start < 0.85
+
+
+def test_cameo_does_not_wipe_a_premium_prior():
+    cameo = _player(
+        minutes=27,
+        starts=0,
+        now_cost=77,
+        selected_by_percent="18",
+        team_join_date="2024-07-01",
+    )
+    season = _player(
+        id=2,
+        web_name="Nailed",
+        minutes=3000,
+        starts=34,
+        now_cost=77,
+        selected_by_percent="18",
+        team_join_date="2024-07-01",
+    )
+    thin = estimate_minutes(cameo, None, _cfg())
+    full = estimate_minutes(season, None, _cfg())
+    assert thin.p_start > 0.45
+    assert full.p_start > thin.p_start
+    assert full.p_start > 0.9
 
 
 def test_one_game_clean_sheet_does_not_set_team_xgc():
