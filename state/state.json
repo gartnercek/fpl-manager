@@ -1,11 +1,11 @@
 {
   "last_emailed_gw": 12,
-  "last_fingerprint": "{\"bb\": false, \"c\": 68, \"in\": [109], \"mode\": \"transfers\", \"out\": [352], \"tc\": false, \"v\": 79, \"xi\": [4, 8, 60, 68, 79, 109, 124, 249, 399, 426, 427]}",
+  "last_fingerprint": "{\"bb\": false, \"c\": 79, \"in\": [109], \"mode\": \"transfers\", \"out\": [352], \"tc\": false, \"v\": 68, \"xi\": [4, 8, 60, 68, 79, 109, 124, 249, 399, 426, 427]}",
   "free_transfers": 1,
   "by_team": {
     "4846735": {
       "last_emailed_gw": 12,
-      "last_fingerprint": "{\"bb\": false, \"c\": 68, \"in\": [109], \"mode\": \"transfers\", \"out\": [352], \"tc\": false, \"v\": 79, \"xi\": [4, 8, 60, 68, 79, 109, 124, 249, 399, 426, 427]}"
+      "last_fingerprint": "{\"bb\": false, \"c\": 79, \"in\": [109], \"mode\": \"transfers\", \"out\": [352], \"tc\": false, \"v\": 68, \"xi\": [4, 8, 60, 68, 79, 109, 124, 249, 399, 426, 427]}"
     }
   }
 }
