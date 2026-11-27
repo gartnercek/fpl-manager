@@ -1,18 +1,77 @@
 # fpl-manager
 
-Advisory Fantasy Premier League manager. It never submits transfers. Once a week (or on
-demand) it models expected points, solves a squad under FPL rules, times Triple Captain /
-Bench Boost with an optimal-stopping rule, and emails the plan.
+Advisory Fantasy Premier League manager. It never submits anything. Once a day the GitHub
+Action checks the next deadline; inside 60 hours it projects expected points for every player,
+plans transfers and chips over the next weeks, and emails the plan.
 
-## Status
+## What it does each gameweek
 
-| Milestone | What |
-|---|---|
-| M1 | FPL API + expected-points model |
-| M2 | Squad MIP (15, XI, captain, transfers) |
-| M3 | Email report + GitHub Actions daily cron |
-| M4 | Triple Captain / Bench Boost stopping rule |
-| M5 | Backtest harness (no-ops until GW2 finishes) |
+1. **Data.** Per-match history for every player (`element-summary`), fixtures, prices, injury
+   flags, your public squad, bank, transfer history and chips. Free transfers are rebuilt from
+   your history (1 per GW, up to 5 banked, a WC/FH week keeps the bank but adds none, a hit
+   resets to 1).
+2. **Expected points** (`projection.py`), only from data known before the deadline:
+   - team attack/defence ratings fitted on this season's match xG (recency weighted), with
+     last season's ratings as a prior (FPL's own `strength_*` fields are empty in 2026/27);
+   - minutes: recency-weighted start/cameo rates, times FPL's chance-of-playing;
+   - per-90 xG, xA, bonus, saves, cards and DEFCON hit rate: this season + last season + a
+     position/price prior;
+   - FPL scoring incl. DEFCON, clean sheets/goals conceded/saves from Poisson rates, Polymarket
+     team totals blended into this GW's goal rates when the book is liquid;
+   - a final per-position calibration (fitted on 2025/26) that stops the optimiser overpaying
+     for premiums whose rates are over-extrapolated.
+   It deliberately does **not** use FPL `form` / `ep_next` / points-per-game: those are lagging
+   point totals and were what made the old version chase last week's haul.
+3. **Transfers** (`planner.py`): one MIP over the next 6 GWs (transfers in the first 2, XI and
+   captain re-picked every week) with budget/sell prices, 3-per-club, formations, FT banking,
+   hits (a -4 must also clear a 2-point margin) and the value of rolling an FT.
+4. **Chips**: every chip is available once per half (GW1-19 and GW20-38; first-half chips
+   expire after GW19). Each GW it solves the plan with each available chip played now and
+   compares the gain with the expected best gain from keeping it for a later GW in the same
+   half (Triple Captain / Bench Boost from our own projections of those weeks, Wildcard / Free
+   Hit from a prior; second-half priors are higher because doubles and blanks are announced
+   late). If more chips are left than GWs in the half, one is played now.
+5. **Letter** (`report.py`): action summary, transfers with xP gain, XI, bench order,
+   captain/vice, chip verdicts with the numbers, the provisional plan for the next weeks, risk
+   notes and the top players by position.
+
+## Backtest
+
+`python -m fpl_manager.backtest` replays this season from GW1 under the FPL rules
+(`simulator.py`: prices, sell-on fee, FT banking, hits, auto-subs, vice-captain, all chips per
+half) and scores every decision with the points players actually got. Each decision only sees
+data from before that deadline. Historical injury flags are not public, so the backtest uses
+heavy net transfers out as a news proxy; the live letter uses the real flags.
+
+```bash
+python -m fpl_manager.backtest                    # 2026/27, GW1 to last finished GW
+python -m fpl_manager.backtest --season-dir data/vaastav/2025-26 --prev-dir data/vaastav/2024-25
+```
+
+Past seasons come from the [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League)
+archive (download `gws/merged_gw.csv`, `fixtures.csv`, `teams.csv`, `players_raw.csv` into the folder).
+
+### Results (November 2026)
+
+Model settings were chosen on 2025/26; 2026/27 is out of sample. "Old" is the pre-rebuild code
+replayed in the same simulator with the same information (it reproduces the real 2026/27 letters:
+Bruno/Gabriel captaincies, one transfer a week, no chip played).
+
+| | 2025/26 GW1-38 | 2026/27 GW1-11 |
+|---|---|---|
+| New | **2218** | **684** |
+| Old (replayed) | 2200 | 671 |
+| Team 4846735 as actually played | - | 650 |
+
+Where it comes from (2026/27 GW1-11): captain points 81 vs 40 for the old letter; the rest of the
+XI scored slightly less. Over 2025/26 the new letter played all 8 chips (old: 3), took no hits
+(old: 2) and gained 22 captain points. One-season totals are noisy (a ±40 swing from small
+setting changes is normal), so settings were only changed when they helped on both seasons.
+
+Projection accuracy, next GW, every registered player (2025/26 / 2026/27): correlation with actual
+points 0.59 / 0.57 (FPL form: 0.50 / 0.43); best-15-by-position actual points per GW 72 / 74
+(form: 60 / 64); the top-rated captain scored 6.6 / 7.2 per GW (top form: 4.4 / 3.3). Adding form
+or points-per-game on top of the projection does not help (form's coefficient is slightly negative).
 
 ## Local setup
 
@@ -25,69 +84,43 @@ pip install -e ".[dev]"
 ```bash
 python -m fpl_manager --no-email --force
 python -m pytest -q
-python -m fpl_manager.backtest --from-gw 2
 ```
 
 ## Find your FPL team ID
 
-It is **not** shown in the official Premier League app. Use a browser (Chrome/Edge/Safari).
+It is **not** shown in the official Premier League app. Use a browser.
 
 1. Open [fantasy.premierleague.com](https://fantasy.premierleague.com) and log in.
-2. You must already have entered a squad for **this** season (a new ID is issued every year).
-3. Click **Points** (or **Pick Team** → **Gameweek history**).
-4. Look at the address bar. It looks like:
-
-   `https://fantasy.premierleague.com/entry/1234567/event/1`
-
-   The number after `/entry/` is your team ID (`1234567` in that example). Ignore `/event/`.
-
-Paste that number into `config.yaml` as `team_id`. You can also set GitHub variable `FPL_TEAM_ID`
-(same number). Until it is set, the program still builds a 100.0m GW1 squad; it just cannot
-diff against *your* current 15.
-
-## Public site
-
-Marketing pages live in `site/` and are meant to ship at [fpl-manager.com](https://fpl-manager.com). Card checkout is a Cloudflare Pages Function (`/api/checkout`) plus Stripe. The weekly GitHub Action reads who paid and emails each team. See `site/README.md` for DNS, Search Console, and the Stripe checklist.
-
-The public GW letter is [fpl-manager.com/letter.html](https://fpl-manager.com/letter.html). Paste-ready X, Reddit, Scout, and email copy lives in `launch/TONIGHT.md`.
+2. Click **Points**. The address bar looks like `https://fantasy.premierleague.com/entry/1234567/event/1`.
+3. The number after `/entry/` is your team ID. Put it in `config.yaml` as `team_id`, or set the
+   GitHub variable `FPL_TEAM_ID`.
 
 ## Where email details go
 
 Do **not** put your Gmail password in `config.yaml` or commit it. GitHub Actions reads secrets.
 
-1. Create a [Gmail app password](https://myaccount.google.com/apppasswords) (Google Account →
-   Security → 2-Step Verification must be on → App passwords). Use that 16-character password,
-   not your normal Gmail password.
-2. Open the repo: [github.com/gartnercek/fpl-manager](https://github.com/gartnercek/fpl-manager)
-3. **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Add:
+1. Create a [Gmail app password](https://myaccount.google.com/apppasswords) (2-Step Verification
+   must be on). Use that 16-character password, not your normal one.
+2. Repo **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret**:
 
    | Name | Value |
    |---|---|
-   | `SMTP_USER` | your Gmail address (the account that sends) |
+   | `SMTP_USER` | the Gmail address that sends |
    | `SMTP_PASSWORD` | the 16-character app password |
    | `EMAIL_TO` | the inbox that should receive the weekly plan |
 
-   Optional: `SMTP_HOST` = `smtp.gmail.com`, `SMTP_PORT` = `587` (defaults exist if you skip these).
+   Optional: `SMTP_HOST`, `SMTP_PORT`, `EMAIL_REPLY_TO`, `EMAIL_OPERATOR` (failure notices),
+   `SUBSCRIBERS_JSON` (extra teams: `[{"team_id": 123, "email": "a@b.co"}]`), `BILLING_BLOCKLIST`.
+3. **Variables** tab -> `FPL_TEAM_ID` = your team ID.
 
-4. **Settings** → **Secrets and variables** → **Actions** → **Variables** tab →
-   `FPL_TEAM_ID` = your team ID from above.
-
-Then: **Actions** → **fpl-weekly** → **Run workflow** → tick **force** → Run. That sends mail
-immediately. The daily 09:00 UTC cron only emails when a deadline is within 60 hours.
-
-Paid subscribers are picked up from Stripe when `STRIPE_SECRET_KEY` is set (see `site/README.md`).
-`EMAIL_TO` still receives the operator letter for `FPL_TEAM_ID`.
+Then **Actions** -> **fpl-weekly** -> **Run workflow** -> tick **force**. The daily 09:00 UTC run
+only emails when a deadline is within 60 hours, and re-sends inside 24 hours only if the advice
+changed (new injury flag, price change).
 
 ## Known approximations
 
-- Squad MIP maximises **5-week** XI+captain xP (captain and XI re-picked each GW). GW1 xP is displayed separately.
-- Each week it compares T=0/1/2 transfers (including -4 hits), a **Wildcard** rebuild, and a **Free Hit** (this GW only, then revert). A 5-week MIP scores the new 15 (so a 100-then-10 punt loses to 60-then-60). WC/FH then have a **stopping rule**: the gap is shrunk until there is this-season data, the first ~1/e weeks of the half are sample-only (unless the trusted gap is huge), then play iff that beats E[best remaining swing]. Unused chips still get cheaper to play in the last 3 GWs of GW19 / GW38.
-- One chip per week: if WC or FH is the move, TC/BB are held.
-- Set pieces: FPL `penalties_order` / corners / direct FKs. Season xG is stripped of a typical PK rate for stayers so pens are not double-counted; new takers get the full PK module. Misses are -2.
-- DEFCON: 2 pts if simulated CBIT/CBIRT hits the FPL threshold (10 DEF / 12 MID-FWD).
-- Formation: 1.2 xP/week penalty for a 5th starting defender; 0.8 for starting only one forward. Players with P(play)<0.55 cannot start.
-- Minutes: last-6 matches when they exist; otherwise last-season totals mixed with price and ownership. Summer signings are not treated as nailed.
-- Form: last-6 xG vs season rate when history exists; otherwise FPL `form` (zero before GW1). GW1 also blends FPL `ep_next`.
-- Points are Monte Carlo (minutes, Poisson returns, and clean sheets share the same draws). Bonus is still `0.3 × (G+A)` inside each draw.
-- Team strength from FPL's own ratings, not xG models. Sell prices from public transfer history.
-- Free-transfer future value is a constant. DGW chip priors are constants until fixtures confirm.
+- Sell prices are rebuilt from public transfer history (FPL does not publish them without login).
+- Transfers are planned for the next two GWs; later weeks of the 6-GW horizon hold that squad.
+- Wildcard / Free Hit hold values are priors, not projections of future rebuilds.
+- Bonus is a per-90 rate scaled by fixture, not a BPS simulation.
+- Polymarket odds cannot be backtested (no history); they only touch this GW's fixtures.

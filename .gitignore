@@ -11,9 +11,7 @@ data/cache/
 data/predictions/
 *.parquet
 .env
-.wrangler/
-.dev.vars
-node_modules/
+data/vaastav/
 
 _bootstrap_sample.json
 .DS_Store

@@ -21,7 +21,7 @@ def _ascii(text: str) -> str:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fpl-manager")
-    parser.add_argument("--fetch-summaries", action="store_true")
+    parser.add_argument("--fetch-summaries", action="store_true", help="Deprecated: per-player history is always fetched.")
     parser.add_argument("--no-email", action="store_true", help="Print the weekly report to stdout.")
     parser.add_argument("--email", action="store_true", help="Send email if the deadline window says so.")
     parser.add_argument("--force", action="store_true", help="Send/print even outside the 60h window.")
