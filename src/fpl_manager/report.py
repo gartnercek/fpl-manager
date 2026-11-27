@@ -158,6 +158,22 @@ def pair_transfers(out_ids: list[int], in_ids: list[int], proj: Projection, gw: 
     return pairs
 
 
+def bank_after(plan: Plan, proj: Projection, state: SquadState) -> int:
+    """Bank (tenths) after this GW's moves at today's prices and your real sell prices.
+
+    For a Free Hit: squad value minus the Free Hit squad's cost (what is left unspent)."""
+    wp = plan.first
+    price = proj.table.price
+    if not state.squad:
+        return 1000 - sum(int(price[p]) for p in wp.squad)
+    if wp.chip == "freehit":
+        value = state.bank + sum(int(state.sell.get(p, price[p])) for p in state.squad)
+        return value - sum(int(price[p]) for p in wp.squad)
+    sold = sum(int(state.sell.get(p, price[p])) for p in wp.transfers_out)
+    bought = sum(int(price[p]) for p in wp.transfers_in)
+    return int(state.bank) + sold - bought
+
+
 def _keep_value(proj: Projection, squad: list[int], weeks: list[int]) -> tuple[float, float]:
     """Expected points of the current 15 with no transfers: this GW, and over `weeks`."""
     t = proj.table
@@ -225,7 +241,10 @@ def render_report(
     actions.append(f"Formation {n[2]}-{n[3]}-{n[4]}")
     actions.append("Bench order: " + ", ".join(f"{i}. {nm(p)}" for i, p in enumerate(wp.bench, start=1)))
     if not initial:
-        actions.append(f"Free transfers: {state.ft} available this GW, {wp.ft_after} after this plan. Bank {state.bank / 10:.1f}m.")
+        actions.append(
+            f"Free transfers: {state.ft} available this GW, {wp.ft_after} after this plan. "
+            f"Bank {state.bank / 10:.1f}m now, {bank_after(plan, proj, state) / 10:.1f}m after these moves."
+        )
     if pending_transfers:
         actions.append(
             f"Note: you already made {pending_transfers} transfer(s) for this GW; this letter is relative to "

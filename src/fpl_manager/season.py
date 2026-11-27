@@ -59,6 +59,8 @@ class SeasonData:
     prev: pd.DataFrame  # previous-season totals keyed by player code
     prev_team: dict[int, tuple[float, float]] = field(default_factory=dict)  # team -> (attack, defence)
     status: pd.DataFrame | None = None  # live only: element, status, chance, news
+    live_prices: dict[int, int] | None = None  # live only: FPL now_cost, for the coming GW
+    start_prices: dict[int, int] | None = None  # live only: price at the season's first deadline
 
     @property
     def last_finished_gw(self) -> int:
@@ -68,7 +70,13 @@ class SeasonData:
         return int(done.event.max())
 
     def price_at(self, gw: int) -> dict[int, int]:
-        """Buy price (tenths) at the GW `gw` deadline. Latest earlier price if no row that GW."""
+        """Buy price (tenths) at the GW `gw` deadline.
+
+        For the coming GW of a live season this is FPL's current price; per-match `value`
+        rows lag behind it by every price change since the player's last match.
+        """
+        if self.live_prices and gw > self.last_finished_gw:
+            return dict(self.live_prices)
         rows = self.pm[self.pm.gw <= gw].sort_values(["gw", "kickoff"])
         last = rows.groupby("element")["value"].last()
         out = {int(k): int(v) for k, v in last.items() if v and v > 0}
@@ -367,7 +375,13 @@ def from_api(
     )
     if prev_team is None:
         prev_team = {t: (1.0, 1.0) for t in names}
-    return SeasonData(_season_label(bootstrap), players, pm, fixtures, names, prev, prev_team, status)
+    live = {int(p["id"]): int(p.get("now_cost") or 0) for p in bootstrap["elements"]}
+    start = {
+        int(p["id"]): int(p.get("now_cost") or 0) - int(p.get("cost_change_start") or 0) for p in bootstrap["elements"]
+    }
+    return SeasonData(
+        _season_label(bootstrap), players, pm, fixtures, names, prev, prev_team, status, live, start
+    )
 
 
 def _season_label(bootstrap: dict[str, Any]) -> str:

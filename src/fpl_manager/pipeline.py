@@ -9,7 +9,7 @@ from fpl_manager.api import FPLClient, next_event
 from fpl_manager.config import ROOT
 from fpl_manager.planner import HALF_END, LAST_GW, PlannerConfig, SquadState, plan_gameweek
 from fpl_manager.projection import Projection, ProjectionConfig, availability_from_status, project
-from fpl_manager.report import fingerprint, render_report
+from fpl_manager.report import bank_after, fingerprint, render_report
 from fpl_manager.season import (
     SeasonData,
     _carry_team_prior,
@@ -180,7 +180,14 @@ def letter_for_team(
     if team_id:
         now_costs = {int(p["id"]): int(p["now_cost"]) for p in bootstrap["elements"]}
         topups = {int(k): int(v) for k, v in (cfg.get("ft_topups") or {}).items()}
-        squad_info = load_entry_state(client, team_id, gw, now_costs, topups=topups)
+        season = shared["season"]
+
+        def price_at_gw(g: int) -> dict[int, int]:
+            if g <= 1 and season.start_prices:
+                return season.start_prices
+            return season.price_at(g)
+
+        squad_info = load_entry_state(client, team_id, gw, now_costs, topups=topups, price_at_gw=price_at_gw)
         ids = sorted(squad_info["current_ids"])
         if require_squad and not ids:
             raise SquadError(f"No public squad for team {team_id}")
@@ -199,6 +206,11 @@ def letter_for_team(
     xp = xp_full[[w for w in xp_full.columns if w < gw + plcfg.horizon]]
     players = proj.table[["pos", "team", "price"]].copy()
     plan = plan_gameweek(xp, players, state, gw, plcfg, p_start=proj.table.p_start, xp_full=xp_full)
+    left = bank_after(plan, proj, state)
+    if left < 0:
+        raise SquadError(
+            f"team {team_id}: plan is {-left / 10:.1f}m over budget at today's prices; no letter sent"
+        )
     timezone = str((cfg.get("email") or {}).get("timezone") or "Europe/Ljubljana")
     subject, text, html = render_report(
         event=event,

@@ -63,8 +63,14 @@ def load_entry_state(
     event_id: int,
     now_costs: dict[int, int],
     topups: dict[int, int] | None = None,
+    price_at_gw: Any = None,
 ) -> dict[str, Any]:
-    """Public squad snapshot. Missing endpoints are treated as 'no squad yet'."""
+    """Public squad snapshot. Missing endpoints are treated as 'no squad yet'.
+
+    Sell price = purchase + floor(rise / 2). Purchase prices come from the transfer history;
+    players held since the team was entered were bought at that GW's price
+    (`price_at_gw(gw) -> {element: price}`), never at today's price.
+    """
     entry: dict[str, Any] = {}
     try:
         entry = client.entry(team_id)
@@ -102,8 +108,15 @@ def load_entry_state(
         purchase.pop(int(row["element_out"]), None)
 
     current_ids = [int(p["element"]) for p in picks]
+    started = int(entry.get("started_event") or 1)
+    entry_prices: dict[int, int] = {}
+    if price_at_gw is not None:
+        try:
+            entry_prices = dict(price_at_gw(started) or {})
+        except Exception:
+            entry_prices = {}
     for pid in current_ids:
-        purchase.setdefault(pid, now_costs.get(pid, 0))
+        purchase.setdefault(pid, entry_prices.get(pid) or now_costs.get(pid, 0))
 
     sells = {pid: sell_price(purchase[pid], now_costs.get(pid, purchase[pid])) for pid in current_ids}
     bank = entry.get("last_deadline_bank")

@@ -106,3 +106,49 @@ def test_season_free_hit_reverts_and_ft_banks():
     assert results[1].chip == "freehit" and results[1].hits == 0
     assert team.ft == 2  # GW2 FH keeps 1, GW3 rolled -> 2
     assert team.chips_left[("freehit", 1)] is False
+
+
+class _FakeClient:
+    """Team entered at GW1 with players 1-15; player 1 later swapped for 16."""
+
+    def entry(self, team_id):
+        return {"started_event": 1, "last_deadline_bank": 5}
+
+    def entry_picks(self, team_id, gw):
+        ids = [16] + list(range(2, 16))
+        return {"picks": [{"element": p} for p in ids]}
+
+    def entry_transfers(self, team_id):
+        return [{"event": 3, "time": "2026-09-01", "element_in": 16, "element_in_cost": 50, "element_out": 1}]
+
+    def entry_history(self, team_id):
+        return {"current": [{"event": 1, "event_transfers": 0}, {"event": 2, "event_transfers": 0},
+                            {"event": 3, "event_transfers": 1}], "chips": []}
+
+
+def test_sell_prices_use_purchase_price_not_todays_price():
+    from fpl_manager.squad import load_entry_state
+
+    now = {p: 60 for p in range(1, 17)}
+    now[2] = 64  # bought at 50 in GW1, risen 1.4m -> sells for 5.7m
+    now[16] = 53  # bought at 50 in GW3 -> sells for 5.1m
+    start = {p: 60 for p in range(1, 17)}
+    start[2] = 50
+    info = load_entry_state(_FakeClient(), 1, 4, now, price_at_gw=lambda g: start)
+    assert info["sell_prices"][2] == 57
+    assert info["sell_prices"][16] == 51
+    assert info["sell_prices"][3] == 60
+    assert info["free_transfers"] == 2
+
+
+def test_live_season_prices_come_from_fpl_now_cost():
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    from synth import make_season
+
+    s = make_season(played=3)
+    s.live_prices = {int(p): 77 for p in s.players.element}
+    assert set(s.price_at(4).values()) == {77}  # coming GW: today's FPL prices
+    assert 77 not in s.price_at(2).values()  # past GW: price at that match
