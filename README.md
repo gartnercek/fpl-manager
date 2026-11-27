@@ -51,6 +51,28 @@ python -m fpl_manager.backtest --season-dir data/vaastav/2025-26 --prev-dir data
 Past seasons come from the [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League)
 archive (download `gws/merged_gw.csv`, `fixtures.csv`, `teams.csv`, `players_raw.csv` into the folder).
 
+### Results (November 2026)
+
+Model settings were chosen on 2025/26; 2026/27 is out of sample. "Old" is the pre-rebuild code
+replayed in the same simulator with the same information (it reproduces the real 2026/27 letters:
+Bruno/Gabriel captaincies, one transfer a week, no chip played).
+
+| | 2025/26 GW1-38 | 2026/27 GW1-11 |
+|---|---|---|
+| New | **2218** | **684** |
+| Old (replayed) | 2200 | 671 |
+| Team 4846735 as actually played | - | 650 |
+
+Where it comes from (2026/27 GW1-11): captain points 81 vs 40 for the old letter; the rest of the
+XI scored slightly less. Over 2025/26 the new letter played all 8 chips (old: 3), took no hits
+(old: 2) and gained 22 captain points. One-season totals are noisy (a ±40 swing from small
+setting changes is normal), so settings were only changed when they helped on both seasons.
+
+Projection accuracy, next GW, every registered player (2025/26 / 2026/27): correlation with actual
+points 0.59 / 0.57 (FPL form: 0.50 / 0.43); best-15-by-position actual points per GW 72 / 74
+(form: 60 / 64); the top-rated captain scored 6.6 / 7.2 per GW (top form: 4.4 / 3.3). Adding form
+or points-per-game on top of the projection does not help (form's coefficient is slightly negative).
+
 ## Local setup
 
 ```bash

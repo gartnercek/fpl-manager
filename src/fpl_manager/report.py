@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from jinja2 import Template
 
 from fpl_manager.api import deadline_utc
-from fpl_manager.planner import CHIPS, HALF_END, Plan, SquadState, best_lineup, chip_window, half_of
+from fpl_manager.planner import CHIPS, HALF_END, Plan, SquadState, best_lineup, half_of
 from fpl_manager.projection import Projection
 
 POS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}

@@ -16,7 +16,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
-from fpl_manager.planner import HALF_END, LAST_GW, Plan, PlannerConfig, WeekPlan, plan_gameweek
+from fpl_manager.planner import HALF_END, LAST_GW, PlannerConfig, WeekPlan, plan_gameweek
 from fpl_manager.projection import ProjectionConfig, availability_proxy, project
 from fpl_manager.season import SeasonData
 from fpl_manager.simulator import Team, run_season
@@ -32,7 +32,6 @@ def make_decider(
 ):
     pcfg = pcfg or ProjectionConfig()
     plcfg = plcfg or PlannerConfig()
-    players_base = season.players.set_index("element")
 
     def decide(gw: int, team: Team, prices: dict[int, int]) -> WeekPlan:
         t0 = time.time()
