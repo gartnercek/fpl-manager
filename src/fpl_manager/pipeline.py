@@ -1,57 +1,164 @@
 from __future__ import annotations
 
+from dataclasses import fields, replace
 from typing import Any
 
+import requests
+
 from fpl_manager.api import FPLClient, next_event
-from fpl_manager.chips import advise_chips
-from fpl_manager.fixtures import index_fixtures, upcoming_events
-from fpl_manager.models.aggregate import predict_all, predictions_frame, save_predictions
-from fpl_manager.optimize import run_optimize
+from fpl_manager.config import ROOT
+from fpl_manager.planner import HALF_END, LAST_GW, PlannerConfig, SquadState, plan_gameweek
+from fpl_manager.projection import Projection, ProjectionConfig, availability_from_status, project
 from fpl_manager.report import fingerprint, render_report
+from fpl_manager.season import (
+    SeasonData,
+    _carry_team_prior,
+    _prev_team_from_season,
+    _vaastav_season,
+    fetch_summaries,
+    from_api,
+)
 from fpl_manager.squad import load_entry_state
+
+VAASTAV = "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data"
 
 
 class SquadError(RuntimeError):
     pass
 
 
-def load_histories(client: FPLClient, player_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
-    out: dict[int, list[dict[str, Any]]] = {}
-    for pid in player_ids:
-        try:
-            summary = client.element_summary(pid)
-        except Exception:
-            continue
-        out[pid] = list(summary.get("history") or [])
-    return out
+def _dataclass_from(cls, raw: dict[str, Any] | None):
+    raw = dict(raw or {})
+    names = {f.name for f in fields(cls)}
+    obj = cls()
+    clean = {k: v for k, v in raw.items() if k in names}
+    for key in ("pool_per_pos", "assist_mult", "goal_mult"):
+        if key in clean and isinstance(clean[key], dict):
+            clean[key] = {int(k): float(v) if key != "pool_per_pos" else int(v) for k, v in clean[key].items()}
+    if "bench_weight" in clean:
+        clean["bench_weight"] = tuple(float(v) for v in clean["bench_weight"])
+    return replace(obj, **clean)
 
 
-def build_predictions(cfg: dict[str, Any], *, fetch_summaries: bool = False) -> dict[str, Any]:
-    client = FPLClient()
+def projection_config(cfg: dict[str, Any]) -> ProjectionConfig:
+    return _dataclass_from(ProjectionConfig, cfg.get("projection"))
+
+
+def planner_config(cfg: dict[str, Any]) -> PlannerConfig:
+    return _dataclass_from(PlannerConfig, cfg.get("planner"))
+
+
+def _previous_team_priors(bootstrap: dict[str, Any], season_label: str) -> dict[int, tuple[float, float]] | None:
+    """Last season's xG team ratings (from the vaastav archive). None if it cannot be fetched."""
+    year = int(season_label[:4])
+    prev = f"{year - 1}-{str(year)[-2:]}"
+    folder = ROOT / "data" / "vaastav" / prev
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("merged_gw.csv", "fixtures.csv", "teams.csv", "players_raw.csv"):
+            path = folder / name
+            if path.exists() and path.stat().st_size > 0:
+                continue
+            src = f"{VAASTAV}/{prev}/{'gws/' if name == 'merged_gw.csv' else ''}{name}"
+            resp = requests.get(src, timeout=60)
+            resp.raise_for_status()
+            path.write_bytes(resp.content)
+        pm, fx, _players, names = _vaastav_season(folder)
+        ratings = _prev_team_from_season(pm, fx, sorted(names))
+        now_names = {int(t["id"]): str(t["short_name"]) for t in bootstrap["teams"]}
+        return _carry_team_prior(ratings, names, now_names)
+    except Exception as exc:  # network or format problem: fall back to neutral priors
+        print(f"previous-season team priors unavailable ({exc.__class__.__name__}); using neutral priors")
+        return None
+
+
+def load_season(client: FPLClient | None = None) -> SeasonData:
+    client = client or FPLClient()
     bootstrap = client.bootstrap()
     fixtures = client.fixtures()
+    ids = [int(p["id"]) for p in bootstrap["elements"]]
+    summaries = fetch_summaries(client, ids)
+    season = from_api(bootstrap, fixtures, summaries)
+    priors = _previous_team_priors(bootstrap, season.season)
+    if priors:
+        season.prev_team = priors
+    return season
+
+
+def _market_overrides(season: SeasonData, bootstrap: dict[str, Any], gw: int, cfg: dict[str, Any]) -> dict | None:
+    mkt = cfg.get("markets") or {}
+    if not mkt.get("enabled", False):
+        return None
+    try:
+        from fpl_manager.markets import (
+            blend_lambda,
+            fetch_team_totals,
+            lambda_from_p_blank,
+            lookup_blanks,
+            map_fpl_teams,
+            market_weight,
+        )
+
+        totals = fetch_team_totals()
+    except Exception as exc:
+        print(f"Polymarket fetch failed ({exc.__class__.__name__}); model lambdas only")
+        return None
+    names = map_fpl_teams(list(bootstrap["teams"]))
+    out = {}
+    fx = season.fixtures[season.fixtures.event == gw]
+    for row in fx.itertuples():
+        home, away = lookup_blanks(totals, int(row.team_h), int(row.team_a), row.kickoff, names)
+        pair = []
+        for side in (home, away):
+            if side is None:
+                pair.append(None)
+                continue
+            w = market_weight(
+                side.liquidity,
+                blend=float(mkt.get("blend", 0.7)),
+                min_liquidity=float(mkt.get("min_liquidity", 80)),
+                full_liquidity=float(mkt.get("full_liquidity", 800)),
+            )
+            pair.append((lambda_from_p_blank(side.p_blank), w) if w > 0 else None)
+        if any(pair):
+            out[(gw, int(row.team_h), int(row.team_a))] = (pair, blend_lambda)
+    print(f"Polymarket team totals: {len(out)} fixtures blended")
+    return out or None
+
+
+def build_predictions(cfg: dict[str, Any], *, fetch_summaries: bool = True) -> dict[str, Any]:
+    client = FPLClient()
+    season = load_season(client)
+    bootstrap = client.bootstrap()
     event = next_event(bootstrap)
-    event_id = int(event["id"])
-    events = upcoming_events(event_id, int(cfg.get("horizon_gws") or 6))
-    by_team = index_fixtures(fixtures)
-    histories = None
-    if fetch_summaries or cfg.get("fetch_element_summaries"):
-        ids = [int(p["id"]) for p in bootstrap["elements"] if not p.get("removed")]
-        histories = load_histories(client, ids)
-    preds = predict_all(bootstrap, by_team, events, cfg, histories)
-    team_names = {int(t["id"]): t["short_name"] for t in bootstrap["teams"]}
-    frame = predictions_frame(preds, team_names)
-    save_predictions(frame, event_id)
+    gw = int(event["id"])
+    pcfg = projection_config(cfg)
+    plcfg = planner_config(cfg)
+    half_end = HALF_END if gw <= HALF_END else LAST_GW
+    horizon = max(plcfg.horizon, half_end - gw + 1)
+    avail = availability_from_status(season.status)
+    overrides = _market_overrides(season, bootstrap, gw, cfg)
+    proj = project(season, gw, horizon, pcfg, avail, market=overrides)
+    save_predictions(proj)
     return {
         "client": client,
         "bootstrap": bootstrap,
         "event": event,
-        "preds": preds,
-        "frame": frame,
-        "team_names": team_names,
-        "events": events,
-        "by_team": by_team,
+        "season": season,
+        "proj": proj,
+        "team_names": season.team_names,
+        "pcfg": pcfg,
+        "plcfg": plcfg,
     }
+
+
+def save_predictions(proj: Projection) -> None:
+    out_dir = ROOT / "data" / "predictions"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        proj.table.to_parquet(out_dir / f"gw{proj.gw}.parquet")
+    except Exception:
+        proj.table.to_csv(out_dir / f"gw{proj.gw}.csv")
 
 
 def letter_for_team(
@@ -59,69 +166,60 @@ def letter_for_team(
     shared: dict[str, Any],
     team_id: int,
     *,
-    free_transfers: int = 1,
+    free_transfers: int | None = None,
     require_squad: bool = False,
 ) -> dict[str, Any]:
     bootstrap = shared["bootstrap"]
     event = shared["event"]
-    preds = shared["preds"]
+    proj: Projection = shared["proj"]
     client = shared["client"]
-    event_id = int(event["id"])
-    current_ids = None
-    bank = None
-    sells = None
-    chips_used: list[str] = []
-    chip_records: list = []
+    gw = int(event["id"])
+    plcfg: PlannerConfig = shared["plcfg"]
+    state = SquadState.fresh()
+    squad_info: dict[str, Any] = {}
     if team_id:
         now_costs = {int(p["id"]): int(p["now_cost"]) for p in bootstrap["elements"]}
-        squad = load_entry_state(client, team_id, event_id, now_costs)
-        current_ids = squad["current_ids"] or None
-        bank = squad["bank"]
-        sells = squad["sell_prices"]
-        chips_used = [str(c) for c in squad["chips_used"] if c]
-        chip_records = list(squad.get("chip_records") or [])
-        if require_squad and not current_ids:
+        topups = {int(k): int(v) for k, v in (cfg.get("ft_topups") or {}).items()}
+        squad_info = load_entry_state(client, team_id, gw, now_costs, topups=topups)
+        ids = sorted(squad_info["current_ids"])
+        if require_squad and not ids:
             raise SquadError(f"No public squad for team {team_id}")
-
-    plan = run_optimize(
-        cfg,
-        bootstrap,
-        event,
-        preds,
-        current_ids=current_ids,
-        bank=bank,
-        sell_prices=sells,
-        free_transfers=free_transfers,
-        chip_records=chip_records,
-    )
-    chips = advise_chips(
-        preds,
-        plan,
-        shared["events"],
-        shared["by_team"],
-        cfg,
-        chips_used=chips_used,
-    )
+        if ids:
+            ft = squad_info.get("free_transfers")
+            if ft is None:
+                ft = int(free_transfers or 1)
+            state = SquadState(
+                squad=ids,
+                sell=dict(squad_info["sell_prices"]),
+                bank=int(squad_info["bank"]),
+                ft=int(ft),
+                chips_left=dict(squad_info["chips_left"]),
+            )
+    xp_full = proj.xp_matrix()
+    xp = xp_full[[w for w in xp_full.columns if w < gw + plcfg.horizon]]
+    players = proj.table[["pos", "team", "price"]].copy()
+    plan = plan_gameweek(xp, players, state, gw, plcfg, p_start=proj.table.p_start, xp_full=xp_full)
     timezone = str((cfg.get("email") or {}).get("timezone") or "Europe/Ljubljana")
     subject, text, html = render_report(
         event=event,
         plan=plan,
-        preds=preds,
-        chips=chips,
+        proj=proj,
+        state=state,
         timezone=timezone,
         team_names=shared["team_names"],
+        pending_transfers=int(squad_info.get("pending_transfers") or 0),
     )
     return {
         "plan": plan,
-        "chips": chips,
+        "state": state,
         "subject": subject,
         "text": text,
         "html": html,
-        "fp": fingerprint(plan, chips),
+        "fp": fingerprint(plan),
     }
 
 
-def run_pipeline(cfg: dict[str, Any], *, fetch_summaries: bool = False) -> dict[str, Any]:
+def run_pipeline(cfg: dict[str, Any], *, fetch_summaries: bool = True) -> dict[str, Any]:
     shared = build_predictions(cfg, fetch_summaries=fetch_summaries)
     letter = letter_for_team(cfg, shared, int(cfg.get("team_id") or 0))
     return {**shared, **letter}

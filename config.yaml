@@ -2,70 +2,38 @@
 # GitHub Actions can override this with repository variable FPL_TEAM_ID.
 team_id: 4846735
 
-# Squad is chosen on this many upcoming gameweeks (XI + captain re-picked each week).
-horizon_gws: 5
-horizon_discount: 1.0
-# Blend FPL's own ep_next into this gameweek only. Kept small: it is a short-horizon
-# number, and a large weight makes the captain and the hit test chase one week.
-ep_next_blend: 0.15
-simulate_draws: 1200
+# One-off free-transfer top-ups FPL announces (2025/26: everyone was topped up to 5 at GW16
+# for AFCON). Format {gw: n}. Free transfers are otherwise rebuilt from your public history.
+ft_topups: {}
 
-lambda_risk: 0.15
-lambda_var: 0.02
-# A -4 must beat rolling by this many extra points over 3 gameweeks, on top of the 4.
-hit_margin: 4.0
-free_transfer_future_value: 1.5
-wildcard_gap_threshold: 12.0
-free_hit_gap_threshold: 8.0
-fifth_defender_penalty: 1.2
-one_forward_penalty: 0.8
-min_start_p_play: 0.55
+# Expected-points model (defaults live in src/fpl_manager/projection.py:ProjectionConfig).
+# Every knob here was checked on 2025/26 and replayed on 2026/27 with python -m fpl_manager.backtest.
+projection:
+  rate_half_life: 12        # player matches; per-90 xG/xA/bonus/DEFCON recency weighting
+  prev_weight: 0.35         # each last-season 90 minutes counts this much (capped at 30 x 90)
+  prev_half_life: 12        # last season fades by half every 12 matches of this season
+  prior_90s: 4.0            # position/price prior strength
+  minutes_decay: 0.65       # start/cameo rates: weight of the match before the latest
+  team_half_life: 14        # team xG ratings recency (matches)
+  team_prior_matches: 8     # last season's ratings count as this many matches
 
-set_pieces:
-  pk_per_match: 0.13
-  pk_conversion: 0.76
-  historical_pk_xg90: 0.09
-  corner_xa90: 0.16
-  fk_xg90: 0.04
-  historical_corner_xa90: 0.12
-  historical_fk_xg90: 0.03
+# Multi-week planner (defaults in src/fpl_manager/planner.py:PlannerConfig).
+planner:
+  horizon: 6                # GWs the transfer plan looks ahead
+  transfer_weeks: 2         # transfers are planned in the first two of them
+  decay: 0.84               # weight of week k = decay**k
+  ft_value: 1.6             # value of a banked free transfer at the end of the plan
+  hit_cost: 4.0
+  transfer_friction: 0.4    # each move must beat the projection noise by this much
+  time_limit: 60            # seconds per MIP solve
 
-form:
-  # Points form is a few games of luck. A shallow slope stops a hot week rewriting xG.
-  points_slope: 0.04
-  recent_xg_weight: 0.45
-
-minutes:
-  summer_cutoff: "2026-06-01"
-  signing_last_season_weight: 0.40
-  market_full_ownership: 25.0
-
-# Chip stopping-rule priors (used until doubles are confirmed on the fixture list).
-chips:
-  mc_draws: 2000
-  epsilon: 0.5
-  p_future_dgw: 0.9
-  dgw_captain_multiplier: 1.6
-  dgw_chip_multiplier: 1.35
-  v_noise_sd: 0.8
-  # Wildcard / Free Hit: shrink the MIP gap until we have this-season data, skip the
-  # first n/e weeks of the half (secretary sample), then stop vs E[best remaining swing].
-  prior_gws: 5.0
-  explore_fraction: 0.37
-  wc_typical: 16.0
-  wc_noise_sd: 8.0
-  wc_override: 32.0
-  fh_typical: 10.0
-  fh_noise_sd: 5.0
-  fh_override: 20.0
-
-# Early-season / no-history minutes priors for unused players, by price (tenths).
-new_player:
-  premium_cost: 75
-  mid_cost: 55
-  p_start_premium: 0.75
-  p_start_mid: 0.40
-  p_start_cheap: 0.10
+# Polymarket EPL team totals (O/U 0.5) -> P(team scores 0). Public Gamma API; no key.
+# Blended into this GW's goal rates when the book is liquid. Not backtestable (no odds history).
+markets:
+  enabled: true
+  blend: 0.7
+  min_liquidity: 80
+  full_liquidity: 800
 
 email:
   timezone: Europe/Ljubljana
@@ -76,16 +44,3 @@ email:
 schedule:
   email_within_hours: 60
   delta_within_hours: 24
-
-fetch_element_summaries: false
-
-billing:
-  season: "2026/27"
-
-# Polymarket EPL team totals (O/U 0.5) -> P(team scores 0) = opponent CS.
-# Public Gamma API; no trading key. Thin books are shrunk toward FPL lambda.
-markets:
-  enabled: true
-  blend: 0.7
-  min_liquidity: 80
-  full_liquidity: 800

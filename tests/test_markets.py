@@ -185,42 +185,23 @@ def test_fetch_filters_epl_series():
     assert sess.params["closed"] == "false"
 
 
-def test_build_fixture_lambdas_uses_liquid_team_totals(monkeypatch):
-    from fpl_manager.fixtures import Matchup
-    from fpl_manager.markets import TeamTotal, lambda_from_p_blank as lam_blank
-    from fpl_manager.models.aggregate import build_fixture_lambdas
+def test_market_team_totals_move_projection_clean_sheets():
+    import sys
+    from pathlib import Path
 
-    monkeypatch.setattr(
-        "fpl_manager.models.aggregate.fetch_team_totals",
-        lambda: [
-            TeamTotal("2026-08-31", "Aston Villa FC", "Arsenal FC", "home", 0.42, 2000.0),
-            TeamTotal("2026-08-31", "Aston Villa FC", "Arsenal FC", "away", 0.14, 2000.0),
-        ],
-    )
-    stub = {
-        "strength_overall_home": 3,
-        "strength_overall_away": 3,
-        "strength_attack_home": 0,
-        "strength_attack_away": 0,
-        "strength_defence_home": 0,
-        "strength_defence_away": 0,
-    }
-    teams = {1: {"id": 1, "short_name": "ARS", **stub}, 2: {"id": 2, "short_name": "AVL", **stub}}
-    kickoff = "2026-08-31T19:00:00Z"
-    by_team = {
-        2: {3: [Matchup(event=3, opponent=1, is_home=True, difficulty=3, kickoff=kickoff)]},
-        1: {3: [Matchup(event=3, opponent=2, is_home=False, difficulty=3, kickoff=kickoff)]},
-    }
-    cfg = {"markets": {"enabled": True, "blend": 1.0, "min_liquidity": 80, "full_liquidity": 800}}
-    out = build_fixture_lambdas(
-        teams,
-        {1: 1.0, 2: 1.2},
-        3.5,
-        by_team,
-        [3],
-        [{"id": 1, "name": "Arsenal", "short_name": "ARS"}, {"id": 2, "name": "Aston Villa", "short_name": "AVL"}],
-        cfg,
-    )
-    lam_h, lam_a = out[(3, 2, 1)]
-    assert abs(lam_h - lam_blank(0.42)) < 1e-9
-    assert abs(lam_a - lam_blank(0.14)) < 1e-9
+    sys.path.insert(0, str(Path(__file__).parent))
+    from synth import make_season
+
+    from fpl_manager.markets import blend_lambda
+    from fpl_manager.projection import project
+
+    s = make_season(played=3)
+    fx = s.fixtures[s.fixtures.event == 4].iloc[0]
+    key = (4, int(fx.team_h), int(fx.team_a))
+    base = project(s, 4, 1)
+    # Market: the away side almost never scores (P(blank)=0.8) -> home clean sheet much likelier.
+    market = {key: ([None, (lambda_from_p_blank(0.8), 1.0)], blend_lambda)}
+    moved = project(s, 4, 1, market=market)
+    home_def = base.table[(base.table.team == key[1]) & (base.table.pos == 2)].index
+    assert (moved.table.loc[home_def, "p_cs_next"] > base.table.loc[home_def, "p_cs_next"] + 0.1).all()
+    assert (moved.table.loc[home_def, "xp_4"] > base.table.loc[home_def, "xp_4"]).all()

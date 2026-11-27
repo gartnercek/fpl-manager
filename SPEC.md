@@ -1,5 +1,9 @@
 # FPL Manager — Implementation Specification
 
+> **Historical v1 spec.** The rebuilt model, planner, chip rules and backtest are described in
+> `README.md`; where the two disagree, the README is current. The public website mentioned in
+> earlier versions has been removed.
+
 > Build this as a **standalone repository** (working name `fpl-manager`).
 > Follow the milestones in order. Do not build the optional items until the core loop works.
 
